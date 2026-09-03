@@ -60,10 +60,10 @@ flutter analyze
 ```bash
 cp .env.example .env
 # تمام رمزهای داخل .env را تغییر دهید.
-docker compose --env-file .env -f infra/compose.yaml up -d --build
+docker compose -p foodlens --env-file .env -f infra/compose.yaml up -d --build api
 ```
 
-در نسخه فعلی PostgreSQL و MinIO آماده اجرا هستند، اما persistence برنامه هنوز به آن‌ها متصل نشده است. این سرویس‌ها هیچ پورت عمومی ندارند و API به‌صورت پیش‌فرض فقط روی `127.0.0.1:18431` منتشر می‌شود. پیش از اجرا روی VPS مشترک، راهنمای [استقرار VPS](docs/vps-deployment.md) را دنبال کنید.
+در نسخه فعلی persistence هنوز به PostgreSQL و MinIO متصل نشده است، بنابراین Compose به‌صورت پیش‌فرض فقط API را اجرا می‌کند و سرویس‌های ذخیره‌سازی در profile اختیاری `storage` غیرفعال هستند. API فقط روی `127.0.0.1:18431` منتشر می‌شود. پیش از اجرا روی VPS مشترک، راهنمای [استقرار VPS](docs/vps-deployment.md) را دنبال کنید.
 
 ## Vision API
 
