@@ -5,9 +5,17 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.main import app
+from app.vision import GEMINI_RESPONSE_SCHEMA
 
 
 client = TestClient(app)
+
+
+def test_gemini_schema_does_not_use_unsupported_references() -> None:
+    schema_text = str(GEMINI_RESPONSE_SCHEMA)
+
+    assert "$defs" not in schema_text
+    assert "$ref" not in schema_text
 
 
 def test_health_check() -> None:

@@ -40,6 +40,36 @@ class ValidatedImage(BaseModel):
     mime_type: str
 
 
+GEMINI_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "food_id": {"type": "string", "nullable": True},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "is_food": {"type": "boolean"},
+        "needs_confirmation": {"type": "boolean"},
+        "alternatives": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "food_id": {"type": "string"},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                },
+                "required": ["food_id", "confidence"],
+            },
+        },
+    },
+    "required": [
+        "food_id",
+        "confidence",
+        "is_food",
+        "needs_confirmation",
+        "alternatives",
+    ],
+}
+
+
 def validate_image(content: bytes) -> ValidatedImage:
     if not content:
         raise InvalidImageError("Image is empty")
@@ -96,7 +126,6 @@ class GeminiVisionProvider(VisionProvider):
             "catalog, or is too ambiguous. Confidence must reflect uncertainty; set "
             "needs_confirmation=true below 0.85. Do not estimate calories or portion."
         )
-        schema = RecognitionResult.model_json_schema()
         request = {
             "contents": [
                 {
@@ -115,7 +144,7 @@ class GeminiVisionProvider(VisionProvider):
             "generationConfig": {
                 "temperature": 0,
                 "responseMimeType": "application/json",
-                "responseSchema": schema,
+                "responseSchema": GEMINI_RESPONSE_SCHEMA,
             },
         }
         url = (
