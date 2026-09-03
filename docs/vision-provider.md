@@ -4,7 +4,7 @@ Last reviewed: 2026-09-03
 
 ## Initial choice
 
-FoodLens starts with `gemini-2.5-flash` behind the `VisionProvider` interface. It supports image input and structured JSON output, has stable production availability, and currently costs $0.30 per million input tokens and $2.50 per million output tokens on the paid tier.
+FoodLens starts with `gemini-3.6-flash` behind the `VisionProvider` interface. It supports image input and structured JSON output and is the Flash model recommended by the Gemini API for new users as of September 2026. Pricing must be checked against Google's current pricing page before production rollout.
 
 This is a starting hypothesis, not a permanent winner. No general-purpose vision model can guarantee completely correct food recognition. The final provider will be selected using the FoodLens gold benchmark.
 

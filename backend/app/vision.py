@@ -82,7 +82,7 @@ class MockVisionProvider(VisionProvider):
 
 
 class GeminiVisionProvider(VisionProvider):
-    def __init__(self, api_key: str, model: str = "gemini-2.5-flash") -> None:
+    def __init__(self, api_key: str, model: str = "gemini-3.6-flash") -> None:
         if not api_key:
             raise VisionError("GEMINI_API_KEY is required")
         self._api_key = api_key
@@ -150,6 +150,6 @@ def create_vision_provider() -> VisionProvider:
     if provider == "gemini":
         return GeminiVisionProvider(
             api_key=os.getenv("GEMINI_API_KEY", ""),
-            model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+            model=os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
         )
     raise VisionError(f"Unsupported VISION_PROVIDER: {provider}")

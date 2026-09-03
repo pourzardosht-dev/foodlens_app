@@ -71,7 +71,7 @@ docker compose -p foodlens --env-file .env -f infra/compose.yaml up -d --build a
 
 ```dotenv
 VISION_PROVIDER=gemini
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.6-flash
 GEMINI_API_KEY=your-key-set-directly-on-the-server
 ```
 
