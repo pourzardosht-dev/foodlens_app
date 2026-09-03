@@ -1,0 +1,60 @@
+name: Deploy Flutter Web to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Test
+        working-directory: mobile
+        run: flutter test
+
+      - name: Build web
+        working-directory: mobile
+        env:
+          FOODLENS_API_URL: ${{ vars.FOODLENS_API_URL }}
+        run: |
+          test -n "$FOODLENS_API_URL" || { echo "FOODLENS_API_URL repository variable is required"; exit 1; }
+          flutter build web --release \
+            --base-href "/${{ github.event.repository.name }}/" \
+            --dart-define=FOODLENS_API_URL="$FOODLENS_API_URL"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: mobile/build/web
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
