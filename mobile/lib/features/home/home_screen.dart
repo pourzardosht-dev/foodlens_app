@@ -5,27 +5,10 @@ import 'package:image_picker/image_picker.dart';
 
 import '../recognition/recognition_api.dart';
 
-class FoodOption {
-  const FoodOption({
-    required this.id,
-    required this.name,
-    required this.portionName,
-    required this.portionGrams,
-    required this.kcalPer100g,
-    required this.uncertainty,
-  });
-
-  final String id;
-  final String name;
-  final String portionName;
-  final double portionGrams;
-  final double kcalPer100g;
-  final double uncertainty;
-}
-
 class DiaryEntry {
   const DiaryEntry({
     required this.food,
+    required this.portion,
     required this.quantity,
     required this.grams,
     required this.calories,
@@ -33,72 +16,14 @@ class DiaryEntry {
     required this.rangeMax,
   });
 
-  final FoodOption food;
+  final FoodCatalogItem food;
+  final FoodPortion portion;
   final double quantity;
   final double grams;
   final double calories;
   final double rangeMin;
   final double rangeMax;
 }
-
-const foods = <FoodOption>[
-  FoodOption(
-    id: 'ghormeh-sabzi',
-    name: 'قرمه‌سبزی',
-    portionName: 'ملاقه',
-    portionGrams: 180,
-    kcalPer100g: 165,
-    uncertainty: .18,
-  ),
-  FoodOption(
-    id: 'fesenjan',
-    name: 'فسنجان',
-    portionName: 'ملاقه',
-    portionGrams: 180,
-    kcalPer100g: 220,
-    uncertainty: .22,
-  ),
-  FoodOption(
-    id: 'cooked-rice',
-    name: 'برنج پخته',
-    portionName: 'کفگیر',
-    portionGrams: 110,
-    kcalPer100g: 130,
-    uncertainty: .10,
-  ),
-  FoodOption(
-    id: 'koobideh-kebab',
-    name: 'کباب کوبیده',
-    portionName: 'سیخ',
-    portionGrams: 100,
-    kcalPer100g: 250,
-    uncertainty: .15,
-  ),
-  FoodOption(
-    id: 'ash-reshteh',
-    name: 'آش رشته',
-    portionName: 'کاسه',
-    portionGrams: 400,
-    kcalPer100g: 110,
-    uncertainty: .20,
-  ),
-  FoodOption(
-    id: 'baghala-ghatogh',
-    name: 'باقلاقاتق',
-    portionName: 'ملاقه',
-    portionGrams: 180,
-    kcalPer100g: 150,
-    uncertainty: .25,
-  ),
-  FoodOption(
-    id: 'anarbij',
-    name: 'اناربیج',
-    portionName: 'ملاقه',
-    portionGrams: 180,
-    kcalPer100g: 210,
-    uncertainty: .25,
-  ),
-];
 
 double quantityForGrams({
   required double grams,
@@ -117,6 +42,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _picker = ImagePicker();
   final _entries = <DiaryEntry>[];
+  List<FoodCatalogItem> _foods = const [];
   Uint8List? _selectedImage;
   bool _isReadingImage = false;
 
@@ -135,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final bytes = await image.readAsBytes();
       if (!mounted) return;
       setState(() => _selectedImage = bytes);
+      if (!await _ensureFoodCatalog()) return;
       RecognitionResult? recognition;
       var recognitionUnavailable = false;
       try {
@@ -149,6 +76,28 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     } finally {
       if (mounted) setState(() => _isReadingImage = false);
+    }
+  }
+
+  Future<bool> _ensureFoodCatalog() async {
+    if (_foods.isNotEmpty) return true;
+    try {
+      final foods = await widget.recognitionApi.fetchFoods();
+      if (!mounted) return false;
+      if (foods.isEmpty) {
+        throw const RecognitionApiException('Food catalog is empty');
+      }
+      setState(() => _foods = foods);
+      return true;
+    } on RecognitionApiException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('فهرست غذاها دریافت نشد؛ دوباره تلاش کنید.'),
+          ),
+        );
+      }
+      return false;
     }
   }
 
@@ -195,10 +144,14 @@ class _HomeScreenState extends State<HomeScreen> {
     RecognitionResult? recognition,
     required bool recognitionUnavailable,
   }) async {
-    FoodOption selectedFood = foods.firstWhere(
-      (food) => food.id == recognition?.foodId,
-      orElse: () => foods.first,
-    );
+    FoodCatalogItem? selectedFood;
+    if (recognition?.foodId case final foodId?) {
+      selectedFood = _foods.cast<FoodCatalogItem?>().firstWhere(
+        (food) => food?.id == foodId,
+        orElse: () => null,
+      );
+    }
+    FoodPortion? selectedPortion = selectedFood?.defaultPortion;
     double quantity = 1;
     final entry = await showModalBottomSheet<DiaryEntry>(
       context: context,
@@ -206,10 +159,12 @@ class _HomeScreenState extends State<HomeScreen> {
       showDragHandle: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) {
-          final grams = selectedFood.portionGrams * quantity;
-          final calories = grams * selectedFood.kcalPer100g / 100;
-          final rangeMin = calories * (1 - selectedFood.uncertainty);
-          final rangeMax = calories * (1 + selectedFood.uncertainty);
+          final activeFood = selectedFood;
+          final activePortion = selectedPortion;
+          final grams = (activePortion?.grams ?? 0) * quantity;
+          final calories = grams * (activeFood?.kcalPer100g ?? 0) / 100;
+          final rangeMin = calories * (1 - (activeFood?.uncertainty ?? 0));
+          final rangeMax = calories * (1 + (activeFood?.uncertainty ?? 0));
           return SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -240,13 +195,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  DropdownButtonFormField<FoodOption>(
+                  DropdownButtonFormField<FoodCatalogItem>(
                     initialValue: selectedFood,
                     decoration: const InputDecoration(
                       labelText: 'غذا',
+                      hintText: 'غذای درست را انتخاب کنید',
                       border: OutlineInputBorder(),
                     ),
-                    items: foods
+                    items: _foods
                         .map(
                           (food) => DropdownMenuItem(
                             value: food,
@@ -258,92 +214,125 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (food != null) {
                         setSheetState(() {
                           selectedFood = food;
+                          selectedPortion = food.defaultPortion;
                           quantity = 1;
                         });
                       }
                     },
                   ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'مقدار: ${_formatQuantity(quantity)} ${selectedFood.portionName}',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+                  if (activeFood != null && activePortion != null) ...[
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<FoodPortion>(
+                      key: ValueKey('portion-${activeFood.id}'),
+                      initialValue: activePortion,
+                      decoration: const InputDecoration(
+                        labelText: 'واحد اندازه‌گیری',
+                        border: OutlineInputBorder(),
                       ),
-                      IconButton.outlined(
-                        tooltip: 'کاهش مقدار',
-                        onPressed: quantity > .5
-                            ? () => setSheetState(() => quantity -= .5)
-                            : null,
-                        icon: const Icon(Icons.remove),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton.filled(
-                        tooltip: 'افزایش مقدار',
-                        onPressed: () => setSheetState(() => quantity += .5),
-                        icon: const Icon(Icons.add),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    key: const Key('edit-portion-weight'),
-                    onPressed: () async {
-                      final editedGrams = await _editPortionWeight(
-                        context,
-                        initialGrams: grams,
-                      );
-                      if (editedGrams != null) {
-                        setSheetState(
-                          () => quantity = quantityForGrams(
-                            grams: editedGrams,
-                            portionGrams: selectedFood.portionGrams,
-                          ),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.edit_outlined),
-                    label: const Text('تغییر مقدار یا وزن کل'),
-                  ),
-                  const SizedBox(height: 18),
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE4EFE9),
-                      borderRadius: BorderRadius.circular(8),
+                      items: activeFood.portions
+                          .map(
+                            (portion) => DropdownMenuItem(
+                              value: portion,
+                              child: Text(
+                                '${portion.name} (${portion.grams.round()} گرم)',
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (portion) {
+                        if (portion != null) {
+                          setSheetState(() {
+                            selectedPortion = portion;
+                            quantity = 1;
+                          });
+                        }
+                      },
                     ),
-                    child: Row(
+                    const SizedBox(height: 20),
+                    Row(
                       children: [
-                        const Icon(Icons.local_fire_department_outlined),
-                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            '${calories.round()} کیلوکالری\nبازه محتمل: ${rangeMin.round()} تا ${rangeMax.round()}',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                            'مقدار: ${_formatQuantity(quantity)} ${activePortion.name}',
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
                         ),
-                        Text('${grams.round()} گرم'),
+                        IconButton.outlined(
+                          tooltip: 'کاهش مقدار',
+                          onPressed: quantity > .5
+                              ? () => setSheetState(() => quantity -= .5)
+                              : null,
+                          icon: const Icon(Icons.remove),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filled(
+                          tooltip: 'افزایش مقدار',
+                          onPressed: () => setSheetState(() => quantity += .5),
+                          icon: const Icon(Icons.add),
+                        ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  FilledButton.icon(
-                    onPressed: () => Navigator.pop(
-                      context,
-                      DiaryEntry(
-                        food: selectedFood,
-                        quantity: quantity,
-                        grams: grams,
-                        calories: calories,
-                        rangeMin: rangeMin,
-                        rangeMax: rangeMax,
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      key: const Key('edit-portion-weight'),
+                      onPressed: () async {
+                        final editedGrams = await _editPortionWeight(
+                          context,
+                          initialGrams: grams,
+                        );
+                        if (editedGrams != null) {
+                          setSheetState(
+                            () => quantity = quantityForGrams(
+                              grams: editedGrams,
+                              portionGrams: activePortion.grams,
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('تغییر مقدار یا وزن کل'),
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE4EFE9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.local_fire_department_outlined),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              '${calories.round()} کیلوکالری\nبازه محتمل: ${rangeMin.round()} تا ${rangeMax.round()}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Text('${grams.round()} گرم'),
+                        ],
                       ),
                     ),
-                    icon: const Icon(Icons.check),
-                    label: const Text('ثبت در وعده امروز'),
-                  ),
+                    const SizedBox(height: 18),
+                    FilledButton.icon(
+                      onPressed: () => Navigator.pop(
+                        context,
+                        DiaryEntry(
+                          food: activeFood,
+                          portion: activePortion,
+                          quantity: quantity,
+                          grams: grams,
+                          calories: calories,
+                          rangeMin: rangeMin,
+                          rangeMax: rangeMax,
+                        ),
+                      ),
+                      icon: const Icon(Icons.check),
+                      label: const Text('ثبت در وعده امروز'),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -638,7 +627,7 @@ class _DiaryTile extends StatelessWidget {
         style: const TextStyle(fontWeight: FontWeight.w800),
       ),
       subtitle: Text(
-        '$quantityLabel ${entry.food.portionName}، ${entry.grams.round()} گرم',
+        '$quantityLabel ${entry.portion.name}، ${entry.grams.round()} گرم',
       ),
       trailing: Text(
         '${entry.calories.round()} kcal\n${entry.rangeMin.round()}–${entry.rangeMax.round()}',

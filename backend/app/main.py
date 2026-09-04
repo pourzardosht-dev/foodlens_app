@@ -24,6 +24,9 @@ class FoodResponse(BaseModel):
     id: str
     name_fa: str
     name_en: str
+    kcal_per_100g: float
+    uncertainty_percent: float
+    default_portion_id: str
     portions: list[PortionResponse]
 
 
@@ -74,6 +77,9 @@ def list_foods() -> list[FoodResponse]:
             id=food.id,
             name_fa=food.name_fa,
             name_en=food.name_en,
+            kcal_per_100g=food.kcal_per_100g,
+            uncertainty_percent=food.uncertainty_percent,
+            default_portion_id=food.default_portion_id,
             portions=[
                 PortionResponse(id=portion.id, name_fa=portion.name_fa, grams=portion.grams)
                 for portion in food.portions

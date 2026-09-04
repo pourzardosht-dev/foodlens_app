@@ -8,11 +8,51 @@ import 'package:image_picker/image_picker.dart';
 import 'package:foodlens_mobile/features/recognition/recognition_api.dart';
 
 void main() {
+  test('loads the food catalog with nutrition and default portion', () async {
+    final client = MockClient((request) async {
+      expect(request.method, 'GET');
+      expect(request.url.toString(), 'https://api.example.test/v1/foods');
+      return http.Response(
+        jsonEncode([
+          {
+            'id': 'gheimeh',
+            'name_fa': 'خورش قیمه',
+            'name_en': 'Gheimeh',
+            'kcal_per_100g': 180,
+            'uncertainty_percent': 22,
+            'default_portion_id': 'ladle',
+            'portions': [
+              {'id': 'tablespoon', 'name_fa': 'قاشق غذاخوری', 'grams': 25},
+              {'id': 'ladle', 'name_fa': 'ملاقه', 'grams': 180},
+            ],
+          },
+        ]),
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      );
+    });
+    final api = RecognitionApi(
+      client: client,
+      baseUrl: 'https://api.example.test',
+    );
+
+    final foods = await api.fetchFoods();
+
+    expect(foods, hasLength(1));
+    expect(foods.single.name, 'خورش قیمه');
+    expect(foods.single.kcalPer100g, 180);
+    expect(foods.single.uncertainty, 0.22);
+    expect(foods.single.defaultPortion.name, 'ملاقه');
+  });
+
   test('uploads an image and parses recognition result', () async {
     final client = MockClient((request) async {
       expect(request.method, 'POST');
       expect(request.url.toString(), 'https://api.example.test/v1/recognition');
-      expect(request.headers['content-type'], startsWith('multipart/form-data;'));
+      expect(
+        request.headers['content-type'],
+        startsWith('multipart/form-data;'),
+      );
       final body = utf8.decode(request.bodyBytes, allowMalformed: true);
       expect(body, contains('name="image"'));
       expect(body, contains('filename="upload.jpg"'));

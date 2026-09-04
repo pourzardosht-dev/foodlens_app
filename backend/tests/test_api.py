@@ -27,6 +27,46 @@ def test_food_catalog_includes_similar_gilaki_stews() -> None:
     assert foods_by_id["anarbij"]["name_fa"] == "اناربیج"
 
 
+def test_food_catalog_contains_25_complete_profiles() -> None:
+    response = client.get("/v1/foods")
+
+    assert response.status_code == 200
+    foods = response.json()
+    assert len(foods) == 25
+    assert {food["id"] for food in foods} == {
+        "abgoosht",
+        "adas-polo",
+        "anarbij",
+        "ash-reshteh",
+        "baghala-ghatogh",
+        "cooked-rice",
+        "dolmeh-barg-mo",
+        "fesenjan",
+        "gheimeh",
+        "gheimeh-bademjan",
+        "ghormeh-sabzi",
+        "iranian-macaroni",
+        "joojeh-kebab",
+        "kabab-barg",
+        "kashk-bademjan",
+        "khoresh-karafs",
+        "koobideh-kebab",
+        "kookoo-sabzi",
+        "koofteh-tabrizi",
+        "kotlet",
+        "loobia-polo",
+        "mirza-ghasemi",
+        "sabzi-polo-mahi",
+        "tahchin-morgh",
+        "zereshk-polo-morgh",
+    }
+    for food in foods:
+        assert food["kcal_per_100g"] > 0
+        assert 0 < food["uncertainty_percent"] < 100
+        portion_ids = {portion["id"] for portion in food["portions"]}
+        assert food["default_portion_id"] in portion_ids
+
+
 def test_recognition_prompt_distinguishes_similar_gilaki_stews() -> None:
     prompt = build_recognition_prompt()
 

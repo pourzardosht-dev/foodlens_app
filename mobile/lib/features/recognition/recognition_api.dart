@@ -31,6 +31,59 @@ class RecognitionResult {
   }
 }
 
+class FoodPortion {
+  const FoodPortion({
+    required this.id,
+    required this.name,
+    required this.grams,
+  });
+
+  final String id;
+  final String name;
+  final double grams;
+
+  factory FoodPortion.fromJson(Map<String, dynamic> json) => FoodPortion(
+    id: json['id'] as String,
+    name: json['name_fa'] as String,
+    grams: (json['grams'] as num).toDouble(),
+  );
+}
+
+class FoodCatalogItem {
+  const FoodCatalogItem({
+    required this.id,
+    required this.name,
+    required this.kcalPer100g,
+    required this.uncertainty,
+    required this.defaultPortionId,
+    required this.portions,
+  });
+
+  final String id;
+  final String name;
+  final double kcalPer100g;
+  final double uncertainty;
+  final String defaultPortionId;
+  final List<FoodPortion> portions;
+
+  FoodPortion get defaultPortion => portions.firstWhere(
+    (portion) => portion.id == defaultPortionId,
+    orElse: () => portions.first,
+  );
+
+  factory FoodCatalogItem.fromJson(Map<String, dynamic> json) =>
+      FoodCatalogItem(
+        id: json['id'] as String,
+        name: json['name_fa'] as String,
+        kcalPer100g: (json['kcal_per_100g'] as num).toDouble(),
+        uncertainty: (json['uncertainty_percent'] as num).toDouble() / 100,
+        defaultPortionId: json['default_portion_id'] as String,
+        portions: (json['portions'] as List<dynamic>)
+            .map((item) => FoodPortion.fromJson(item as Map<String, dynamic>))
+            .toList(growable: false),
+      );
+}
+
 class RecognitionApiException implements Exception {
   const RecognitionApiException(this.message);
 
@@ -45,6 +98,30 @@ class RecognitionApi {
 
   final http.Client? client;
   final String baseUrl;
+
+  Future<List<FoodCatalogItem>> fetchFoods() async {
+    final ownedClient = client == null ? http.Client() : null;
+    try {
+      final response = await (client ?? ownedClient!).get(
+        Uri.parse('$baseUrl/v1/foods'),
+      );
+      if (response.statusCode != 200) {
+        throw RecognitionApiException(
+          'Food catalog failed with status ${response.statusCode}',
+        );
+      }
+      final items = jsonDecode(response.body) as List<dynamic>;
+      return items
+          .map((item) => FoodCatalogItem.fromJson(item as Map<String, dynamic>))
+          .toList(growable: false);
+    } on RecognitionApiException {
+      rethrow;
+    } catch (error) {
+      throw RecognitionApiException('Food catalog is unavailable: $error');
+    } finally {
+      ownedClient?.close();
+    }
+  }
 
   Future<RecognitionResult> recognize(XFile image) async {
     final request = http.MultipartRequest(
