@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.main import app
-from app.vision import GEMINI_RESPONSE_SCHEMA
+from app.vision import GEMINI_RESPONSE_SCHEMA, build_recognition_prompt
 
 
 client = TestClient(app)
@@ -16,6 +16,27 @@ def test_gemini_schema_does_not_use_unsupported_references() -> None:
 
     assert "$defs" not in schema_text
     assert "$ref" not in schema_text
+
+
+def test_food_catalog_includes_similar_gilaki_stews() -> None:
+    foods_response = client.get("/v1/foods")
+
+    assert foods_response.status_code == 200
+    foods_by_id = {food["id"]: food for food in foods_response.json()}
+    assert foods_by_id["baghala-ghatogh"]["name_fa"] == "باقلاقاتق"
+    assert foods_by_id["anarbij"]["name_fa"] == "اناربیج"
+
+
+def test_recognition_prompt_distinguishes_similar_gilaki_stews() -> None:
+    prompt = build_recognition_prompt()
+
+    assert "baghala-ghatogh" in prompt
+    assert "broad-bean" in prompt
+    assert "visible whole eggs" in prompt
+    assert "anarbij" in prompt
+    assert "walnut, pomegranate" in prompt
+    assert "small meatballs" in prompt
+    assert "do not choose the closest-looking item" in prompt
 
 
 def test_health_check() -> None:

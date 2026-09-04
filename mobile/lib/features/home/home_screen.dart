@@ -82,6 +82,22 @@ const foods = <FoodOption>[
     kcalPer100g: 110,
     uncertainty: .20,
   ),
+  FoodOption(
+    id: 'baghala-ghatogh',
+    name: 'باقلاقاتق',
+    portionName: 'ملاقه',
+    portionGrams: 180,
+    kcalPer100g: 150,
+    uncertainty: .25,
+  ),
+  FoodOption(
+    id: 'anarbij',
+    name: 'اناربیج',
+    portionName: 'ملاقه',
+    portionGrams: 180,
+    kcalPer100g: 210,
+    uncertainty: .25,
+  ),
 ];
 
 double quantityForGrams({

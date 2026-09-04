@@ -111,6 +111,21 @@ class MockVisionProvider(VisionProvider):
         )
 
 
+def build_recognition_prompt() -> str:
+    food_catalog = "; ".join(
+        f"{food.id}: {food.name_fa} ({food.name_en}) - {food.recognition_hints}"
+        for food in FOODS
+    )
+    return (
+        "Classify the main Iranian food in this image. Only choose from this catalog: "
+        f"{food_catalog}. Return null food_id when the image is not food, is outside the "
+        "catalog, or is too ambiguous. Compare the visual evidence against the catalog "
+        "hints, especially for similar stews; do not choose the closest-looking item when "
+        "its defining ingredients are absent. Confidence must reflect uncertainty; set "
+        "needs_confirmation=true below 0.85. Do not estimate calories or portion."
+    )
+
+
 class GeminiVisionProvider(VisionProvider):
     def __init__(self, api_key: str, model: str = "gemini-3.6-flash") -> None:
         if not api_key:
@@ -119,13 +134,7 @@ class GeminiVisionProvider(VisionProvider):
         self._model = model
 
     async def recognize(self, image: ValidatedImage) -> RecognitionResult:
-        food_catalog = ", ".join(f"{food.id}: {food.name_fa}" for food in FOODS)
-        prompt = (
-            "Classify the main Iranian food in this image. Only choose from this catalog: "
-            f"{food_catalog}. Return null food_id when the image is not food, is outside the "
-            "catalog, or is too ambiguous. Confidence must reflect uncertainty; set "
-            "needs_confirmation=true below 0.85. Do not estimate calories or portion."
-        )
+        prompt = build_recognition_prompt()
         request = {
             "contents": [
                 {
