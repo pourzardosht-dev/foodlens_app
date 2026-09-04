@@ -289,7 +289,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
                     },
                     icon: const Icon(Icons.edit_outlined),
-                    label: const Text('ویرایش مقدار یا وزن کل'),
+                    label: const Text('تغییر مقدار یا وزن کل'),
                   ),
                   const SizedBox(height: 18),
                   Container(
