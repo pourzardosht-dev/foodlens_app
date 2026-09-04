@@ -27,6 +27,7 @@ class DiaryEntry {
   const DiaryEntry({
     required this.food,
     required this.quantity,
+    required this.grams,
     required this.calories,
     required this.rangeMin,
     required this.rangeMax,
@@ -34,6 +35,7 @@ class DiaryEntry {
 
   final FoodOption food;
   final double quantity;
+  final double grams;
   final double calories;
   final double rangeMin;
   final double rangeMax;
@@ -82,11 +84,13 @@ const foods = <FoodOption>[
   ),
 ];
 
+double quantityForGrams({
+  required double grams,
+  required double portionGrams,
+}) => grams / portionGrams;
+
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({
-    super.key,
-    this.recognitionApi = const RecognitionApi(),
-  });
+  const HomeScreen({super.key, this.recognitionApi = const RecognitionApi()});
 
   final RecognitionApi recognitionApi;
 
@@ -236,7 +240,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         .toList(),
                     onChanged: (food) {
                       if (food != null) {
-                        setSheetState(() => selectedFood = food);
+                        setSheetState(() {
+                          selectedFood = food;
+                          quantity = 1;
+                        });
                       }
                     },
                   ),
@@ -263,6 +270,26 @@ class _HomeScreenState extends State<HomeScreen> {
                         icon: const Icon(Icons.add),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    key: const Key('edit-portion-weight'),
+                    onPressed: () async {
+                      final editedGrams = await _editPortionWeight(
+                        context,
+                        initialGrams: grams,
+                      );
+                      if (editedGrams != null) {
+                        setSheetState(
+                          () => quantity = quantityForGrams(
+                            grams: editedGrams,
+                            portionGrams: selectedFood.portionGrams,
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('ویرایش مقدار یا وزن کل'),
                   ),
                   const SizedBox(height: 18),
                   Container(
@@ -292,6 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       DiaryEntry(
                         food: selectedFood,
                         quantity: quantity,
+                        grams: grams,
                         calories: calories,
                         rangeMin: rangeMin,
                         rangeMax: rangeMax,
@@ -313,6 +341,60 @@ class _HomeScreenState extends State<HomeScreen> {
   String _formatQuantity(double value) => value == value.roundToDouble()
       ? value.toInt().toString()
       : value.toStringAsFixed(1);
+
+  Future<double?> _editPortionWeight(
+    BuildContext context, {
+    required double initialGrams,
+  }) async {
+    final controller = TextEditingController(
+      text: initialGrams.round().toString(),
+    );
+    String? errorText;
+    final result = await showDialog<double>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('ویرایش مقدار غذا'),
+          content: TextField(
+            key: const Key('portion-weight-input'),
+            controller: controller,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'وزن تقریبی کل',
+              suffixText: 'گرم',
+              helperText: 'وزن تمام غذای داخل تصویر را وارد کنید.',
+              errorText: errorText,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('انصراف'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final value = double.tryParse(
+                  controller.text.trim().replaceAll(',', '.'),
+                );
+                if (value == null || value <= 0 || value > 100000) {
+                  setDialogState(
+                    () => errorText = 'وزنی بین ۱ تا ۱۰۰٬۰۰۰ گرم وارد کنید.',
+                  );
+                  return;
+                }
+                Navigator.pop(context, value);
+              },
+              child: const Text('اعمال مقدار'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
 
   String _recognitionMessage(
     RecognitionResult? result, {
@@ -539,7 +621,9 @@ class _DiaryTile extends StatelessWidget {
         entry.food.name,
         style: const TextStyle(fontWeight: FontWeight.w800),
       ),
-      subtitle: Text('$quantityLabel ${entry.food.portionName}'),
+      subtitle: Text(
+        '$quantityLabel ${entry.food.portionName}، ${entry.grams.round()} گرم',
+      ),
       trailing: Text(
         '${entry.calories.round()} kcal\n${entry.rangeMin.round()}–${entry.rangeMax.round()}',
         textAlign: TextAlign.end,

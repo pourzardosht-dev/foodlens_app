@@ -8,6 +8,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:foodlens_mobile/app.dart';
+import 'package:foodlens_mobile/features/home/home_screen.dart';
 
 void main() {
   testWidgets('shows the FoodLens daily diary dashboard', (tester) async {
@@ -17,5 +18,9 @@ void main() {
     expect(find.text('امروز چه خوردید؟'), findsOneWidget);
     expect(find.text('ثبت غذای جدید'), findsOneWidget);
     expect(find.text('هنوز غذایی برای امروز ثبت نشده است.'), findsOneWidget);
+  });
+
+  test('converts a manually entered pot weight to food portions', () {
+    expect(quantityForGrams(grams: 2400, portionGrams: 400), 6);
   });
 }
