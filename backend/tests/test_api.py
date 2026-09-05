@@ -28,65 +28,95 @@ def test_food_catalog_includes_similar_gilaki_stews() -> None:
     assert foods_by_id["anarbij"]["name_fa"] == "اناربیج"
 
 
-def test_food_catalog_contains_52_complete_profiles() -> None:
+def test_food_catalog_contains_82_complete_profiles() -> None:
     response = client.get("/v1/foods")
 
     assert response.status_code == 200
     foods = response.json()
-    assert len(foods) == 52
+    assert len(foods) == 82
     assert {food["id"] for food in foods} == {
         "abgoosht",
         "adas-polo",
+        "adasi",
+        "albaloo-polo",
         "anarbij",
-        "ash-reshteh",
+        "apple",
         "ash-doogh",
+        "ash-reshteh",
         "baghala-ghatogh",
         "baghali-polo-goosht",
+        "banana",
+        "bandari-sandwich",
+        "biscuit",
         "bread-tahdig",
+        "cheeseburger",
+        "chicken-sandwich",
+        "chocolate",
         "cooked-rice",
+        "cream-pastry",
+        "dates",
         "dolmeh-barg-mo",
+        "doogh",
+        "dry-pastry",
+        "estamboli-polo",
+        "falafel-sandwich",
         "fesenjan",
+        "french-fries",
+        "fried-chicken",
         "ghalieh-mahi",
         "gheimeh",
         "gheimeh-bademjan",
         "ghormeh-sabzi",
+        "grapes",
+        "halim",
+        "hamburger",
+        "hot-dog",
         "iranian-macaroni",
         "joojeh-kebab",
         "kabab-bakhtiari",
         "kabab-barg",
         "kabab-tabei",
         "kabab-torsh",
+        "kalam-polo-shirazi",
         "kashk-bademjan",
-        "khoresh-karafs",
         "khoresh-aloo-esfenaj",
         "khoresh-bademjan",
         "khoresh-bamieh",
+        "khoresh-karafs",
         "koobideh-kebab",
         "kookoo-sabzi",
         "koofteh-tabrizi",
         "kotlet",
         "loobia-polo",
         "mahi-shekam-por",
+        "margherita-pizza",
+        "melon",
         "meygoo-polo",
+        "milk",
         "mirza-ghasemi",
+        "mixed-nuts",
         "morgh-torsh",
+        "olivieh-sandwich",
+        "orange",
+        "pepperoni-pizza",
+        "pistachios",
+        "plain-cake",
         "plain-yogurt",
+        "potato-chips",
         "potato-tahdig",
+        "reshteh-polo",
         "rice-tahdig",
         "saffron-rice",
         "salad-shirazi",
         "sabzi-polo-mahi",
-        "tahchin-morgh",
-        "torsh-tareh",
-        "vavishka",
-        "zereshk-polo-morgh",
-        "adasi",
-        "albaloo-polo",
-        "estamboli-polo",
-        "halim",
-        "kalam-polo-shirazi",
-        "reshteh-polo",
         "shishlik",
+        "tahchin-morgh",
+        "tangerine",
+        "torsh-tareh",
+        "tuna-sandwich",
+        "vavishka",
+        "watermelon",
+        "zereshk-polo-morgh",
     }
     for food in foods:
         assert food["kcal_per_100g"] > 0
@@ -126,6 +156,12 @@ def test_recognition_prompt_groups_similar_foods_by_family() -> None:
     assert "[rice dishes]" in prompt
     assert "[kebabs]" in prompt
     assert "[side dishes]" in prompt
+    assert "[fast food]" in prompt
+    assert "[sandwiches]" in prompt
+    assert "[fruits]" in prompt
+    assert "[snacks and sweets]" in prompt
+    assert "[nuts]" in prompt
+    assert "[drinks and dairy]" in prompt
     assert "identify each component's likely family" in prompt
     assert prompt.index("[stews]") < prompt.index("[rice dishes]")
     assert "alternating chunks of saffron chicken and red meat" in prompt
@@ -135,6 +171,10 @@ def test_recognition_prompt_groups_similar_foods_by_family() -> None:
     assert "every distinct visible food component" in prompt
     assert "estimated_grams" in prompt
     assert "Omit unsupported side dishes" in prompt
+    assert "without a visible cheese slice" in prompt
+    assert "clearly visible melted yellow cheese" in prompt
+    assert "not thick French fries" in prompt
+    assert "not round potato tahdig slices" in prompt
 
 
 def test_gemini_schema_requires_independent_food_components() -> None:

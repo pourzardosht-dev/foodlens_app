@@ -846,6 +846,449 @@ FOODS: tuple[FoodProfile, ...] = (
             PortionUnit("bowl", "کاسه متوسط", 350),
         ),
     ),
+    FoodProfile(
+        id="margherita-pizza",
+        name_fa="پیتزا مارگاریتا",
+        name_en="Margherita Pizza",
+        recognition_hints=(
+            "round pizza with red tomato sauce, melted white cheese and sparse basil; "
+            "no pepperoni or heavy meat topping"
+        ),
+        kcal_per_100g=260,
+        uncertainty_percent=24,
+        default_portion_id="slice",
+        portions=(
+            PortionUnit("slice", "یک برش", 110),
+            PortionUnit("small-pizza", "یک پیتزای کوچک", 440),
+        ),
+    ),
+    FoodProfile(
+        id="pepperoni-pizza",
+        name_fa="پیتزا پپرونی",
+        name_en="Pepperoni Pizza",
+        recognition_hints=(
+            "cheese pizza covered with multiple small round red pepperoni slices"
+        ),
+        kcal_per_100g=295,
+        uncertainty_percent=24,
+        default_portion_id="slice",
+        portions=(
+            PortionUnit("slice", "یک برش", 115),
+            PortionUnit("small-pizza", "یک پیتزای کوچک", 460),
+        ),
+    ),
+    FoodProfile(
+        id="hamburger",
+        name_fa="همبرگر",
+        name_en="Hamburger",
+        recognition_hints=(
+            "round bun sandwich with one grilled beef patty and vegetables, without a "
+            "visible cheese slice"
+        ),
+        kcal_per_100g=250,
+        uncertainty_percent=25,
+        default_portion_id="item",
+        portions=(
+            PortionUnit("half-item", "نصف عدد", 110),
+            PortionUnit("item", "یک عدد", 220),
+        ),
+    ),
+    FoodProfile(
+        id="cheeseburger",
+        name_fa="چیزبرگر",
+        name_en="Cheeseburger",
+        recognition_hints=(
+            "round bun sandwich with a beef patty and a clearly visible melted yellow cheese slice"
+        ),
+        kcal_per_100g=285,
+        uncertainty_percent=25,
+        default_portion_id="item",
+        portions=(
+            PortionUnit("half-item", "نصف عدد", 115),
+            PortionUnit("item", "یک عدد", 230),
+        ),
+    ),
+    FoodProfile(
+        id="hot-dog",
+        name_fa="هات‌داگ",
+        name_en="Hot Dog",
+        recognition_hints=(
+            "long sausage inside a split elongated bun, commonly topped with sauces"
+        ),
+        kcal_per_100g=290,
+        uncertainty_percent=26,
+        default_portion_id="item",
+        portions=(
+            PortionUnit("half-item", "نصف عدد", 85),
+            PortionUnit("item", "یک عدد", 170),
+        ),
+    ),
+    FoodProfile(
+        id="french-fries",
+        name_fa="سیب‌زمینی سرخ‌شده",
+        name_en="French Fries",
+        recognition_hints=(
+            "pile of thin golden fried potato sticks; not round potato tahdig slices"
+        ),
+        kcal_per_100g=312,
+        uncertainty_percent=20,
+        default_portion_id="serving",
+        portions=(
+            PortionUnit("small-serving", "پرس کوچک", 80),
+            PortionUnit("serving", "پرس متوسط", 150),
+        ),
+    ),
+    FoodProfile(
+        id="fried-chicken",
+        name_fa="مرغ سوخاری",
+        name_en="Fried Chicken",
+        recognition_hints=(
+            "chicken pieces covered in a thick rough golden-brown crispy breadcrumb coating"
+        ),
+        kcal_per_100g=275,
+        uncertainty_percent=25,
+        default_portion_id="piece",
+        portions=(
+            PortionUnit("piece", "یک تکه", 120),
+            PortionUnit("three-pieces", "سه تکه", 360),
+        ),
+    ),
+    FoodProfile(
+        id="falafel-sandwich",
+        name_fa="ساندویچ فلافل",
+        name_en="Falafel Sandwich",
+        recognition_hints=(
+            "flatbread or baguette sandwich filled with several round brown falafel balls, "
+            "pickles and vegetables"
+        ),
+        kcal_per_100g=260,
+        uncertainty_percent=27,
+        default_portion_id="item",
+        portions=(
+            PortionUnit("half-item", "نصف ساندویچ", 125),
+            PortionUnit("item", "یک ساندویچ", 250),
+        ),
+    ),
+    FoodProfile(
+        id="chicken-sandwich",
+        name_fa="ساندویچ مرغ",
+        name_en="Chicken Sandwich",
+        recognition_hints=(
+            "bread roll or sliced bread filled mainly with visible chicken pieces and vegetables; "
+            "not a breaded fried chicken burger"
+        ),
+        kcal_per_100g=220,
+        uncertainty_percent=27,
+        default_portion_id="item",
+        portions=(
+            PortionUnit("half-item", "نصف ساندویچ", 120),
+            PortionUnit("item", "یک ساندویچ", 240),
+        ),
+    ),
+    FoodProfile(
+        id="olivieh-sandwich",
+        name_fa="ساندویچ الویه",
+        name_en="Olivieh Sandwich",
+        recognition_hints=(
+            "bread filled with pale creamy potato, chicken, egg and mayonnaise salad, "
+            "often with pickles"
+        ),
+        kcal_per_100g=250,
+        uncertainty_percent=27,
+        default_portion_id="item",
+        portions=(
+            PortionUnit("half-item", "نصف ساندویچ", 125),
+            PortionUnit("item", "یک ساندویچ", 250),
+        ),
+    ),
+    FoodProfile(
+        id="bandari-sandwich",
+        name_fa="ساندویچ بندری",
+        name_en="Bandari Sandwich",
+        recognition_hints=(
+            "baguette filled with reddish spicy sliced sausage, onion and tomato sauce"
+        ),
+        kcal_per_100g=285,
+        uncertainty_percent=27,
+        default_portion_id="item",
+        portions=(
+            PortionUnit("half-item", "نصف ساندویچ", 130),
+            PortionUnit("item", "یک ساندویچ", 260),
+        ),
+    ),
+    FoodProfile(
+        id="tuna-sandwich",
+        name_fa="ساندویچ تن ماهی",
+        name_en="Tuna Sandwich",
+        recognition_hints=(
+            "bread filled with flaky pale tuna, often mixed with mayonnaise and vegetables; "
+            "no whole chicken pieces"
+        ),
+        kcal_per_100g=230,
+        uncertainty_percent=26,
+        default_portion_id="item",
+        portions=(
+            PortionUnit("half-item", "نصف ساندویچ", 115),
+            PortionUnit("item", "یک ساندویچ", 230),
+        ),
+    ),
+    FoodProfile(
+        id="apple",
+        name_fa="سیب",
+        name_en="Apple",
+        recognition_hints="whole or sliced round red, green or yellow apple with firm pale flesh",
+        kcal_per_100g=52,
+        uncertainty_percent=10,
+        default_portion_id="item",
+        portions=(
+            PortionUnit("small-item", "یک عدد کوچک", 120),
+            PortionUnit("item", "یک عدد متوسط", 180),
+        ),
+    ),
+    FoodProfile(
+        id="banana",
+        name_fa="موز",
+        name_en="Banana",
+        recognition_hints="curved yellow banana, whole or peeled into pale cream fruit",
+        kcal_per_100g=89,
+        uncertainty_percent=10,
+        default_portion_id="item",
+        portions=(
+            PortionUnit("small-item", "یک عدد کوچک", 80),
+            PortionUnit("item", "یک عدد متوسط", 120),
+        ),
+    ),
+    FoodProfile(
+        id="orange",
+        name_fa="پرتقال",
+        name_en="Orange",
+        recognition_hints="round orange-colored citrus fruit with thick peel or segmented orange flesh",
+        kcal_per_100g=47,
+        uncertainty_percent=10,
+        default_portion_id="item",
+        portions=(
+            PortionUnit("small-item", "یک عدد کوچک", 130),
+            PortionUnit("item", "یک عدد متوسط", 180),
+        ),
+    ),
+    FoodProfile(
+        id="tangerine",
+        name_fa="نارنگی",
+        name_en="Tangerine",
+        recognition_hints=(
+            "small slightly flattened orange citrus fruit with loose peel and small segments"
+        ),
+        kcal_per_100g=53,
+        uncertainty_percent=10,
+        default_portion_id="item",
+        portions=(
+            PortionUnit("item", "یک عدد", 100),
+            PortionUnit("two-items", "دو عدد", 200),
+        ),
+    ),
+    FoodProfile(
+        id="grapes",
+        name_fa="انگور",
+        name_en="Grapes",
+        recognition_hints="cluster or pile of many small round green, red or dark grapes",
+        kcal_per_100g=69,
+        uncertainty_percent=12,
+        default_portion_id="cup",
+        portions=(
+            PortionUnit("small-bunch", "خوشه کوچک", 100),
+            PortionUnit("cup", "یک لیوان", 150),
+        ),
+    ),
+    FoodProfile(
+        id="watermelon",
+        name_fa="هندوانه",
+        name_en="Watermelon",
+        recognition_hints=(
+            "large wedge or cubes of bright red watery fruit with green rind and possible black seeds"
+        ),
+        kcal_per_100g=30,
+        uncertainty_percent=10,
+        default_portion_id="slice",
+        portions=(
+            PortionUnit("slice", "یک برش", 300),
+            PortionUnit("bowl", "یک کاسه خردشده", 250),
+        ),
+    ),
+    FoodProfile(
+        id="melon",
+        name_fa="خربزه یا طالبی",
+        name_en="Melon",
+        recognition_hints=(
+            "pale yellow, cream or orange melon wedges or cubes with a firm rind; not red watermelon"
+        ),
+        kcal_per_100g=35,
+        uncertainty_percent=12,
+        default_portion_id="slice",
+        portions=(
+            PortionUnit("slice", "یک برش", 200),
+            PortionUnit("bowl", "یک کاسه خردشده", 250),
+        ),
+    ),
+    FoodProfile(
+        id="dates",
+        name_fa="خرما",
+        name_en="Dates",
+        recognition_hints="small oval glossy brown dried dates, with or without visible pits",
+        kcal_per_100g=282,
+        uncertainty_percent=12,
+        default_portion_id="three-items",
+        portions=(
+            PortionUnit("item", "یک عدد", 8),
+            PortionUnit("three-items", "سه عدد", 24),
+        ),
+    ),
+    FoodProfile(
+        id="plain-cake",
+        name_fa="کیک ساده",
+        name_en="Plain Cake",
+        recognition_hints=(
+            "slice of soft baked sponge cake without cream layers or thick frosting"
+        ),
+        kcal_per_100g=360,
+        uncertainty_percent=25,
+        default_portion_id="slice",
+        portions=(
+            PortionUnit("small-slice", "برش کوچک", 45),
+            PortionUnit("slice", "یک برش", 80),
+        ),
+    ),
+    FoodProfile(
+        id="dry-pastry",
+        name_fa="شیرینی خشک",
+        name_en="Dry Pastry",
+        recognition_hints=(
+            "small dry baked cookie-like Iranian pastry without whipped cream filling"
+        ),
+        kcal_per_100g=450,
+        uncertainty_percent=28,
+        default_portion_id="piece",
+        portions=(
+            PortionUnit("piece", "یک عدد", 25),
+            PortionUnit("three-pieces", "سه عدد", 75),
+        ),
+    ),
+    FoodProfile(
+        id="cream-pastry",
+        name_fa="شیرینی تر یا خامه‌ای",
+        name_en="Cream Pastry",
+        recognition_hints=(
+            "individual soft pastry or cake visibly layered or filled with whipped cream"
+        ),
+        kcal_per_100g=350,
+        uncertainty_percent=28,
+        default_portion_id="piece",
+        portions=(
+            PortionUnit("small-piece", "یک عدد کوچک", 50),
+            PortionUnit("piece", "یک عدد", 90),
+        ),
+    ),
+    FoodProfile(
+        id="biscuit",
+        name_fa="بیسکویت",
+        name_en="Biscuit",
+        recognition_hints="small flat crisp baked biscuit, plain or lightly patterned",
+        kcal_per_100g=440,
+        uncertainty_percent=22,
+        default_portion_id="three-pieces",
+        portions=(
+            PortionUnit("piece", "یک عدد", 12),
+            PortionUnit("three-pieces", "سه عدد", 36),
+        ),
+    ),
+    FoodProfile(
+        id="chocolate",
+        name_fa="شکلات",
+        name_en="Chocolate",
+        recognition_hints="solid brown chocolate squares, bar pieces or individually wrapped chocolate",
+        kcal_per_100g=535,
+        uncertainty_percent=20,
+        default_portion_id="piece",
+        portions=(
+            PortionUnit("square", "یک مربع", 10),
+            PortionUnit("piece", "یک بسته کوچک", 30),
+        ),
+    ),
+    FoodProfile(
+        id="potato-chips",
+        name_fa="چیپس سیب‌زمینی",
+        name_en="Potato Chips",
+        recognition_hints=(
+            "pile of very thin curved crisp fried potato slices; not thick French fries"
+        ),
+        kcal_per_100g=536,
+        uncertainty_percent=18,
+        default_portion_id="small-bag",
+        portions=(
+            PortionUnit("handful", "یک مشت", 30),
+            PortionUnit("small-bag", "بسته کوچک", 60),
+        ),
+    ),
+    FoodProfile(
+        id="pistachios",
+        name_fa="پسته",
+        name_en="Pistachios",
+        recognition_hints=(
+            "small beige split shells revealing green pistachio kernels, or loose green kernels"
+        ),
+        kcal_per_100g=560,
+        uncertainty_percent=15,
+        default_portion_id="handful",
+        portions=(
+            PortionUnit("tablespoon", "قاشق غذاخوری مغز", 12),
+            PortionUnit("handful", "یک مشت", 30),
+        ),
+    ),
+    FoodProfile(
+        id="mixed-nuts",
+        name_fa="آجیل مخلوط",
+        name_en="Mixed Nuts",
+        recognition_hints=(
+            "mixed bowl or handful containing visibly different nuts such as pistachios, "
+            "almonds, cashews and walnuts"
+        ),
+        kcal_per_100g=600,
+        uncertainty_percent=20,
+        default_portion_id="handful",
+        portions=(
+            PortionUnit("tablespoon", "قاشق غذاخوری", 15),
+            PortionUnit("handful", "یک مشت", 30),
+        ),
+    ),
+    FoodProfile(
+        id="milk",
+        name_fa="شیر",
+        name_en="Milk",
+        recognition_hints=(
+            "plain opaque white milk in a glass or cup; no visible yogurt thickness or foam art"
+        ),
+        kcal_per_100g=61,
+        uncertainty_percent=18,
+        default_portion_id="glass",
+        portions=(
+            PortionUnit("small-glass", "لیوان کوچک", 150),
+            PortionUnit("glass", "یک لیوان", 240),
+        ),
+    ),
+    FoodProfile(
+        id="doogh",
+        name_fa="دوغ",
+        name_en="Doogh",
+        recognition_hints=(
+            "thin white yogurt drink in a glass, sometimes with mint flecks or light foam"
+        ),
+        kcal_per_100g=30,
+        uncertainty_percent=20,
+        default_portion_id="glass",
+        portions=(
+            PortionUnit("small-glass", "لیوان کوچک", 150),
+            PortionUnit("glass", "یک لیوان", 250),
+        ),
+    ),
 )
 
 
@@ -914,6 +1357,48 @@ RECOGNITION_FAMILIES: dict[str, tuple[str, ...]] = {
     "side dishes": (
         "salad-shirazi",
         "plain-yogurt",
+    ),
+    "fast food": (
+        "margherita-pizza",
+        "pepperoni-pizza",
+        "hamburger",
+        "cheeseburger",
+        "hot-dog",
+        "french-fries",
+        "fried-chicken",
+    ),
+    "sandwiches": (
+        "falafel-sandwich",
+        "chicken-sandwich",
+        "olivieh-sandwich",
+        "bandari-sandwich",
+        "tuna-sandwich",
+    ),
+    "fruits": (
+        "apple",
+        "banana",
+        "orange",
+        "tangerine",
+        "grapes",
+        "watermelon",
+        "melon",
+        "dates",
+    ),
+    "snacks and sweets": (
+        "plain-cake",
+        "dry-pastry",
+        "cream-pastry",
+        "biscuit",
+        "chocolate",
+        "potato-chips",
+    ),
+    "nuts": (
+        "pistachios",
+        "mixed-nuts",
+    ),
+    "drinks and dairy": (
+        "milk",
+        "doogh",
     ),
     "pasta": ("iranian-macaroni",),
 }
