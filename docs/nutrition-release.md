@@ -2,6 +2,8 @@
 
 Canonical nutrition values are published only from a reviewed JSON release. Do not infer or copy values without a source whose licence permits FoodLens use.
 
+For foods derived from weighed ingredients and final cooked yield, complete the [recipe calculation workflow](recipe-calculation.md) first.
+
 Each release must contain exactly 20 unique canonical food IDs by default, all five V1 nutrients per 100 g, uncertainty, a source reference, licence note, reviewer note, and a timezone-aware effective timestamp:
 
 ```json
