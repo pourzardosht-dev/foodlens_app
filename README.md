@@ -15,6 +15,8 @@
 
 اعداد تغذیه‌ای فعلی فقط seed توسعه هستند و پیش از انتشار باید توسط منبع معتبر و متخصص تغذیه بازبینی شوند.
 
+برنامه اجرایی persistence، دفتر غذایی، ماکروها، امنیت داده و مهاجرت PostgreSQL در [PRD زیرساخت داده شخصی و Nutrition Engine V1](docs/personal-data-nutrition-v1-prd.md) آمده است.
+
 ## اجرای backend
 
 ```powershell
