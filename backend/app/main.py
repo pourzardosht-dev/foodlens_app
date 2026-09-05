@@ -2,8 +2,12 @@ import os
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
+from app.db.session import get_engine
 from app.nutrition import FOODS, estimate_calories, get_food
 from app.vision import (
     InvalidImageError,
@@ -61,13 +65,25 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/health/database")
+def database_health() -> JSONResponse:
+    try:
+        with get_engine().connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except RuntimeError:
+        return JSONResponse(status_code=503, content={"status": "not_configured"})
+    except SQLAlchemyError:
+        return JSONResponse(status_code=503, content={"status": "unavailable"})
+    return JSONResponse(content={"status": "ok"})
 
 
 @app.get("/v1/foods", response_model=list[FoodResponse])

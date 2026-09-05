@@ -13,6 +13,7 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.6-flash}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://127.0.0.1:8080,http://localhost:8080}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     cpus: 1.0
     mem_limit: 1g
     pids_limit: 256
@@ -34,7 +35,7 @@ services:
 
   postgres:
     image: pgvector/pgvector:pg17
-    profiles: ["storage"]
+    profiles: ["database"]
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -42,8 +43,14 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    cpus: 2
-    mem_limit: 3g
+    cpus: 1
+    mem_limit: 768m
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -52,7 +59,7 @@ services:
 
   minio:
     image: minio/minio:latest
-    profiles: ["storage"]
+    profiles: ["object-storage"]
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:

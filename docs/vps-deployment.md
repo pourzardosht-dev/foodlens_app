@@ -6,7 +6,7 @@ FoodLens is designed to coexist with existing applications on the same Ubuntu VP
 
 - Compose project name: `foodlens`
 - Default host port: `127.0.0.1:18431`
-- The default deployment starts only the API. PostgreSQL and MinIO are disabled behind the optional `storage` profile and have no published host ports.
+- The default deployment starts only the API. PostgreSQL is disabled behind the optional `database` profile, and MinIO is independently disabled behind `object-storage`; neither publishes host ports.
 - Volumes are scoped to the FoodLens Compose project.
 - The API is limited to 1 CPU, 1 GB RAM and 256 processes. Its local Docker logs rotate at 10 MB with three files retained.
 - Optional database and object storage services have their own CPU and memory limits.

@@ -203,13 +203,27 @@ def test_health_check() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_database_health_fails_without_affecting_api(monkeypatch) -> None:
+    def missing_database():
+        raise RuntimeError("DATABASE_URL is required")
+
+    monkeypatch.setattr("app.main.get_engine", missing_database)
+
+    database_response = client.get("/health/database")
+    api_response = client.get("/health")
+
+    assert database_response.status_code == 503
+    assert database_response.json() == {"status": "not_configured"}
+    assert api_response.status_code == 200
+
+
 def test_cors_allows_local_flutter_web() -> None:
     response = client.options(
         "/v1/recognition",
         headers={
             "Origin": "http://127.0.0.1:8080",
             "Access-Control-Request-Method": "POST",
-            "Access-Control-Request-Headers": "content-type",
+            "Access-Control-Request-Headers": "authorization,content-type",
         },
     )
 

@@ -27,6 +27,16 @@ uvicorn app.main:app --reload
 
 سپس مستندات API در `http://127.0.0.1:8000/docs` در دسترس است.
 
+برای اعمال schema اولیه روی PostgreSQL، `DATABASE_URL` را تنظیم و migration را اجرا کنید:
+
+```powershell
+Set-Location backend
+$env:DATABASE_URL="postgresql+psycopg://foodlens:password@localhost:5432/foodlens"
+alembic upgrade head
+```
+
+وضعیت مستقل database از مسیر `/health/database` قابل بررسی است. قطع بودن database مسیر `/health` و قابلیت تشخیص تصویر را از دسترس خارج نمی‌کند.
+
 ## اجرای اپ
 
 ```powershell
@@ -66,7 +76,7 @@ cp .env.example .env
 docker compose -p foodlens --env-file .env -f infra/compose.yaml up -d --build api
 ```
 
-در نسخه فعلی persistence هنوز به PostgreSQL و MinIO متصل نشده است، بنابراین Compose به‌صورت پیش‌فرض فقط API را اجرا می‌کند و سرویس‌های ذخیره‌سازی در profile اختیاری `storage` غیرفعال هستند. API فقط روی `127.0.0.1:18431` منتشر می‌شود. پیش از اجرا روی VPS مشترک، راهنمای [استقرار VPS](docs/vps-deployment.md) را دنبال کنید.
+زیرساخت schema و migration PostgreSQL اضافه شده است، اما APIهای پروفایل و diary هنوز در مرحله بعد پیاده‌سازی می‌شوند. Compose به‌صورت پیش‌فرض فقط API را اجرا می‌کند؛ PostgreSQL در profile اختیاری `database` و MinIO در profile جداگانه `object-storage` غیرفعال هستند. API فقط روی `127.0.0.1:18431` منتشر می‌شود. پیش از اجرا روی VPS مشترک، راهنمای [استقرار VPS](docs/vps-deployment.md) را دنبال کنید.
 
 ## Vision API
 
