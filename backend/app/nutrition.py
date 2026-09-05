@@ -1289,6 +1289,89 @@ FOODS: tuple[FoodProfile, ...] = (
             PortionUnit("glass", "یک لیوان", 250),
         ),
     ),
+    FoodProfile(
+        id="cola",
+        name_fa="نوشابه کولا",
+        name_en="Cola Soft Drink",
+        recognition_hints=(
+            "dark brown carbonated soft drink in a glass, can or labeled bottle; when the "
+            "sugar-free label is not readable, do not infer diet or zero from liquid color"
+        ),
+        kcal_per_100g=42,
+        uncertainty_percent=12,
+        default_portion_id="can",
+        portions=(
+            PortionUnit("glass", "یک لیوان", 250),
+            PortionUnit("can", "یک قوطی", 330),
+            PortionUnit("small-bottle", "بطری کوچک", 500),
+        ),
+    ),
+    FoodProfile(
+        id="diet-cola",
+        name_fa="نوشابه کولا بدون قند",
+        name_en="Diet or Zero Cola",
+        recognition_hints=(
+            "cola whose container visibly and clearly says diet, zero or sugar-free; "
+            "never identify from the dark liquid alone"
+        ),
+        kcal_per_100g=1,
+        uncertainty_percent=50,
+        default_portion_id="can",
+        portions=(
+            PortionUnit("glass", "یک لیوان", 250),
+            PortionUnit("can", "یک قوطی", 330),
+            PortionUnit("small-bottle", "بطری کوچک", 500),
+        ),
+    ),
+    FoodProfile(
+        id="orange-soda",
+        name_fa="نوشابه پرتقالی",
+        name_en="Orange Soda",
+        recognition_hints=(
+            "bright orange carbonated soft drink in a glass or orange-flavored labeled container"
+        ),
+        kcal_per_100g=45,
+        uncertainty_percent=15,
+        default_portion_id="can",
+        portions=(
+            PortionUnit("glass", "یک لیوان", 250),
+            PortionUnit("can", "یک قوطی", 330),
+            PortionUnit("small-bottle", "بطری کوچک", 500),
+        ),
+    ),
+    FoodProfile(
+        id="malt-beverage",
+        name_fa="دلستر یا ماءالشعیر",
+        name_en="Non-Alcoholic Malt Beverage",
+        recognition_hints=(
+            "golden or amber fizzy malt beverage with a foamy head, commonly in a labeled "
+            "non-alcoholic malt bottle or can"
+        ),
+        kcal_per_100g=45,
+        uncertainty_percent=22,
+        default_portion_id="bottle",
+        portions=(
+            PortionUnit("glass", "یک لیوان", 250),
+            PortionUnit("can", "یک قوطی", 330),
+            PortionUnit("bottle", "یک بطری", 330),
+        ),
+    ),
+    FoodProfile(
+        id="lemonade",
+        name_fa="لیموناد",
+        name_en="Lemonade",
+        recognition_hints=(
+            "pale yellow or cloudy lemon drink, often served with lemon slices, ice or mint; "
+            "not orange soda"
+        ),
+        kcal_per_100g=40,
+        uncertainty_percent=25,
+        default_portion_id="glass",
+        portions=(
+            PortionUnit("glass", "یک لیوان", 250),
+            PortionUnit("bottle", "یک بطری کوچک", 330),
+        ),
+    ),
 )
 
 
@@ -1399,6 +1482,11 @@ RECOGNITION_FAMILIES: dict[str, tuple[str, ...]] = {
     "drinks and dairy": (
         "milk",
         "doogh",
+        "cola",
+        "diet-cola",
+        "orange-soda",
+        "malt-beverage",
+        "lemonade",
     ),
     "pasta": ("iranian-macaroni",),
 }

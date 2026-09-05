@@ -28,12 +28,12 @@ def test_food_catalog_includes_similar_gilaki_stews() -> None:
     assert foods_by_id["anarbij"]["name_fa"] == "اناربیج"
 
 
-def test_food_catalog_contains_82_complete_profiles() -> None:
+def test_food_catalog_contains_87_complete_profiles() -> None:
     response = client.get("/v1/foods")
 
     assert response.status_code == 200
     foods = response.json()
-    assert len(foods) == 82
+    assert len(foods) == 87
     assert {food["id"] for food in foods} == {
         "abgoosht",
         "adas-polo",
@@ -52,9 +52,11 @@ def test_food_catalog_contains_82_complete_profiles() -> None:
         "cheeseburger",
         "chicken-sandwich",
         "chocolate",
+        "cola",
         "cooked-rice",
         "cream-pastry",
         "dates",
+        "diet-cola",
         "dolmeh-barg-mo",
         "doogh",
         "dry-pastry",
@@ -88,8 +90,10 @@ def test_food_catalog_contains_82_complete_profiles() -> None:
         "koofteh-tabrizi",
         "kotlet",
         "loobia-polo",
+        "lemonade",
         "mahi-shekam-por",
         "margherita-pizza",
+        "malt-beverage",
         "melon",
         "meygoo-polo",
         "milk",
@@ -98,6 +102,7 @@ def test_food_catalog_contains_82_complete_profiles() -> None:
         "morgh-torsh",
         "olivieh-sandwich",
         "orange",
+        "orange-soda",
         "pepperoni-pizza",
         "pistachios",
         "plain-cake",
@@ -175,6 +180,9 @@ def test_recognition_prompt_groups_similar_foods_by_family() -> None:
     assert "clearly visible melted yellow cheese" in prompt
     assert "not thick French fries" in prompt
     assert "not round potato tahdig slices" in prompt
+    assert "never identify from the dark liquid alone" in prompt
+    assert "Non-Alcoholic Malt Beverage" in prompt
+    assert "not orange soda" in prompt
 
 
 def test_gemini_schema_requires_independent_food_components() -> None:
