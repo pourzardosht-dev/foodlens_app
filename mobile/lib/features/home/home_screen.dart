@@ -30,6 +30,27 @@ double quantityForGrams({
   required double portionGrams,
 }) => grams / portionGrams;
 
+const _manualFoodChoice = FoodCatalogItem(
+  id: 'manual-food-choice',
+  name: 'غذا در فهرست نیست؛ ورود دستی',
+  kcalPer100g: 0,
+  uncertainty: 0,
+  defaultPortionId: 'manual-100g',
+  portions: [FoodPortion(id: 'manual-100g', name: '۱۰۰ گرم', grams: 100)],
+);
+
+FoodCatalogItem manualFoodCatalogItem({
+  required String name,
+  required double kcalPer100g,
+}) => FoodCatalogItem(
+  id: 'manual-food',
+  name: name.trim(),
+  kcalPer100g: kcalPer100g,
+  uncertainty: .30,
+  defaultPortionId: 'manual-100g',
+  portions: const [FoodPortion(id: 'manual-100g', name: '۱۰۰ گرم', grams: 100)],
+);
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.recognitionApi = const RecognitionApi()});
 
@@ -153,6 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     FoodPortion? selectedPortion = selectedFood?.defaultPortion;
     double quantity = 1;
+    var foodFieldRevision = 0;
     final entry = await showModalBottomSheet<DiaryEntry>(
       context: context,
       isScrollControlled: true,
@@ -196,22 +218,53 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 18),
                   DropdownButtonFormField<FoodCatalogItem>(
+                    key: ValueKey(
+                      'food-$foodFieldRevision-${activeFood?.id ?? 'none'}',
+                    ),
                     initialValue: selectedFood,
                     decoration: const InputDecoration(
                       labelText: 'غذا',
                       hintText: 'غذای درست را انتخاب کنید',
                       border: OutlineInputBorder(),
                     ),
-                    items: _foods
-                        .map(
-                          (food) => DropdownMenuItem(
-                            value: food,
-                            child: Text(food.name),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (food) {
-                      if (food != null) {
+                    items:
+                        [
+                              _manualFoodChoice,
+                              if (activeFood?.id == 'manual-food') activeFood!,
+                              ..._foods,
+                            ]
+                            .map(
+                              (food) => DropdownMenuItem(
+                                value: food,
+                                child: food == _manualFoodChoice
+                                    ? const Row(
+                                        children: [
+                                          Icon(Icons.edit_outlined, size: 20),
+                                          SizedBox(width: 8),
+                                          Flexible(
+                                            child: Text(
+                                              'ورود نام غذا به‌صورت دستی',
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : Text(food.name),
+                              ),
+                            )
+                            .toList(),
+                    onChanged: (food) async {
+                      if (food == _manualFoodChoice) {
+                        final manualFood = await _createManualFood(context);
+                        if (!context.mounted) return;
+                        setSheetState(() {
+                          foodFieldRevision++;
+                          if (manualFood != null) {
+                            selectedFood = manualFood;
+                            selectedPortion = manualFood.defaultPortion;
+                            quantity = 1;
+                          }
+                        });
+                      } else if (food != null) {
                         setSheetState(() {
                           selectedFood = food;
                           selectedPortion = food.defaultPortion;
@@ -346,6 +399,89 @@ class _HomeScreenState extends State<HomeScreen> {
   String _formatQuantity(double value) => value == value.roundToDouble()
       ? value.toInt().toString()
       : value.toStringAsFixed(1);
+
+  Future<FoodCatalogItem?> _createManualFood(BuildContext context) async {
+    final nameController = TextEditingController();
+    final caloriesController = TextEditingController();
+    String? nameError;
+    String? caloriesError;
+    final result = await showDialog<FoodCatalogItem>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('ورود دستی غذا'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                key: const Key('manual-food-name-input'),
+                controller: nameController,
+                autofocus: true,
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  labelText: 'نام غذا',
+                  hintText: 'مثلاً خوراک خانگی',
+                  errorText: nameError,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                key: const Key('manual-food-calories-input'),
+                controller: caloriesController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'کالری تقریبی در ۱۰۰ گرم',
+                  suffixText: 'kcal',
+                  helperText: 'برای محاسبه کالری و ثبت وعده لازم است.',
+                  errorText: caloriesError,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('انصراف'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final name = nameController.text.trim();
+                final calories = double.tryParse(
+                  caloriesController.text.trim().replaceAll(',', '.'),
+                );
+                final validName = name.isNotEmpty && name.length <= 80;
+                final validCalories =
+                    calories != null && calories > 0 && calories <= 2000;
+                if (!validName || !validCalories) {
+                  setDialogState(() {
+                    nameError = validName
+                        ? null
+                        : 'نام غذا را در حداکثر ۸۰ نویسه وارد کنید.';
+                    caloriesError = validCalories
+                        ? null
+                        : 'عددی بین ۱ تا ۲۰۰۰ وارد کنید.';
+                  });
+                  return;
+                }
+                Navigator.pop(
+                  context,
+                  manualFoodCatalogItem(name: name, kcalPer100g: calories),
+                );
+              },
+              child: const Text('ثبت غذا'),
+            ),
+          ],
+        ),
+      ),
+    );
+    nameController.dispose();
+    caloriesController.dispose();
+    return result;
+  }
 
   Future<double?> _editPortionWeight(
     BuildContext context, {

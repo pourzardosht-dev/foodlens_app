@@ -23,4 +23,16 @@ void main() {
   test('converts a manually entered pot weight to food portions', () {
     expect(quantityForGrams(grams: 2400, portionGrams: 400), 6);
   });
+
+  test('creates a manually named food with a 100 gram base portion', () {
+    final food = manualFoodCatalogItem(
+      name: '  غذای خانگی  ',
+      kcalPer100g: 175,
+    );
+
+    expect(food.name, 'غذای خانگی');
+    expect(food.kcalPer100g, 175);
+    expect(food.defaultPortion.grams, 100);
+    expect(food.uncertainty, .30);
+  });
 }

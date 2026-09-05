@@ -28,12 +28,12 @@ def test_food_catalog_includes_similar_gilaki_stews() -> None:
     assert foods_by_id["anarbij"]["name_fa"] == "اناربیج"
 
 
-def test_food_catalog_contains_45_complete_profiles() -> None:
+def test_food_catalog_contains_46_complete_profiles() -> None:
     response = client.get("/v1/foods")
 
     assert response.status_code == 200
     foods = response.json()
-    assert len(foods) == 45
+    assert len(foods) == 46
     assert {food["id"] for food in foods} == {
         "abgoosht",
         "adas-polo",
@@ -59,6 +59,7 @@ def test_food_catalog_contains_45_complete_profiles() -> None:
         "khoresh-karafs",
         "khoresh-aloo-esfenaj",
         "khoresh-bademjan",
+        "khoresh-bamieh",
         "koobideh-kebab",
         "kookoo-sabzi",
         "koofteh-tabrizi",
@@ -122,6 +123,8 @@ def test_recognition_prompt_groups_similar_foods_by_family() -> None:
     assert prompt.index("[stews]") < prompt.index("[rice dishes]")
     assert "alternating chunks of saffron chicken and red meat" in prompt
     assert "cherries are larger and juicier than barberries" in prompt
+    assert "khoresh-bamieh" in prompt
+    assert "whole green okra pods" in prompt
 
 
 def test_health_check() -> None:

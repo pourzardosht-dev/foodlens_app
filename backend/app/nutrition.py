@@ -512,6 +512,23 @@ FOODS: tuple[FoodProfile, ...] = (
         ),
     ),
     FoodProfile(
+        id="khoresh-bamieh",
+        name_fa="خورش بامیه",
+        name_en="Khoresh Bamieh",
+        recognition_hints=(
+            "red tomato-based meat stew with many clearly visible whole green okra pods; "
+            "no eggplant, split peas or potato sticks"
+        ),
+        kcal_per_100g=125,
+        uncertainty_percent=24,
+        default_portion_id="ladle",
+        portions=(
+            PortionUnit("tablespoon", "قاشق غذاخوری", 25),
+            PortionUnit("ladle", "ملاقه", 180),
+            PortionUnit("bowl", "کاسه متوسط", 360),
+        ),
+    ),
+    FoodProfile(
         id="khoresh-aloo-esfenaj",
         name_fa="خورش آلو اسفناج",
         name_en="Khoresh Aloo Esfenaj",
@@ -749,6 +766,7 @@ RECOGNITION_FAMILIES: dict[str, tuple[str, ...]] = {
         "gheimeh-bademjan",
         "khoresh-karafs",
         "khoresh-bademjan",
+        "khoresh-bamieh",
         "khoresh-aloo-esfenaj",
         "torsh-tareh",
         "morgh-torsh",
