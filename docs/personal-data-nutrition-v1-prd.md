@@ -4,7 +4,7 @@
 
 - Product: FoodLens
 - Scope: Personal data infrastructure, persistent diary, and deterministic nutrition engine
-- Status: Proposed for implementation
+- Status: Implemented in development; production validation and sourced macro rollout pending
 - Baseline: commit `1f07c8f`
 - Target clients: Flutter Android, iOS, and Web
 - Target backend: FastAPI and PostgreSQL 17

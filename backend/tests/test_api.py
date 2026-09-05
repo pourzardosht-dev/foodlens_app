@@ -26,6 +26,16 @@ def test_food_catalog_includes_similar_gilaki_stews() -> None:
     foods_by_id = {food["id"]: food for food in foods_response.json()}
     assert foods_by_id["baghala-ghatogh"]["name_fa"] == "باقلاقاتق"
     assert foods_by_id["anarbij"]["name_fa"] == "اناربیج"
+    assert foods_by_id["anarbij"]["nutrition_status"] == "draft"
+    assert foods_by_id["anarbij"]["protein_g_per_100g"] is None
+
+
+def test_reads_one_food_and_returns_not_found() -> None:
+    response = client.get("/v1/foods/ghormeh-sabzi")
+
+    assert response.status_code == 200
+    assert response.json()["profile_version"] == 1
+    assert client.get("/v1/foods/not-real").status_code == 404
 
 
 def test_food_catalog_contains_87_complete_profiles() -> None:

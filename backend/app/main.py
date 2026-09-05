@@ -1,14 +1,21 @@
 import os
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.db.session import get_engine
+from app.api.custom_foods import router as custom_foods_router
+from app.api.meals import router as meals_router
+from app.api.profiles import router as profiles_router
+from app.db.models import Food, FoodPortion, FoodProfileVersion
+from app.db.session import get_engine, session_scope
 from app.nutrition import FOODS, estimate_calories, get_food
+from app.observability import observe_request, render_metrics
+from app.rate_limit import recognition_rate_limit
+from app.settings import get_settings
 from app.vision import (
     InvalidImageError,
     RecognitionResult,
@@ -30,6 +37,12 @@ class FoodResponse(BaseModel):
     name_en: str
     kcal_per_100g: float
     uncertainty_percent: float
+    protein_g_per_100g: float | None = None
+    carb_g_per_100g: float | None = None
+    fat_g_per_100g: float | None = None
+    fiber_g_per_100g: float | None = None
+    nutrition_status: str = "draft"
+    profile_version: int = 1
     default_portion_id: str
     portions: list[PortionResponse]
 
@@ -53,6 +66,7 @@ class EstimateResponse(BaseModel):
 
 
 app = FastAPI(title="FoodLens API", version="0.1.0")
+app.middleware("http")(observe_request)
 cors_origins = [
     origin.strip()
     for origin in os.getenv(
@@ -64,9 +78,17 @@ cors_origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
+app.include_router(profiles_router)
+app.include_router(meals_router)
+app.include_router(custom_foods_router)
+
+
+@app.get("/metrics", include_in_schema=False)
+def metrics() -> Response:
+    return Response(render_metrics(), media_type="text/plain; version=0.0.4")
 
 
 @app.get("/health")
@@ -88,24 +110,125 @@ def database_health() -> JSONResponse:
 
 @app.get("/v1/foods", response_model=list[FoodResponse])
 def list_foods() -> list[FoodResponse]:
-    return [
-        FoodResponse(
-            id=food.id,
-            name_fa=food.name_fa,
-            name_en=food.name_en,
-            kcal_per_100g=food.kcal_per_100g,
-            uncertainty_percent=food.uncertainty_percent,
-            default_portion_id=food.default_portion_id,
-            portions=[
-                PortionResponse(id=portion.id, name_fa=portion.name_fa, grams=portion.grams)
-                for portion in food.portions
-            ],
+    if get_settings().app_env == "production":
+        with session_scope() as session:
+            return [
+                _database_food_response(*item) for item in _published_foods(session)
+            ]
+    return [_fallback_food_response(food) for food in FOODS]
+
+
+def _fallback_food_response(food) -> FoodResponse:
+    return FoodResponse(
+        id=food.id,
+        name_fa=food.name_fa,
+        name_en=food.name_en,
+        kcal_per_100g=food.kcal_per_100g,
+        uncertainty_percent=food.uncertainty_percent,
+        default_portion_id=food.default_portion_id,
+        portions=[
+            PortionResponse(id=portion.id, name_fa=portion.name_fa, grams=portion.grams)
+            for portion in food.portions
+        ],
+    )
+
+
+def _published_foods(
+    session,
+) -> list[tuple[Food, FoodProfileVersion, list[FoodPortion]]]:
+    rows = session.execute(
+        select(Food, FoodProfileVersion)
+        .join(FoodProfileVersion, FoodProfileVersion.food_id == Food.id)
+        .where(
+            Food.is_canonical.is_(True),
+            Food.retired_at.is_(None),
+            FoodProfileVersion.retired_at.is_(None),
+            FoodProfileVersion.review_state.in_(
+                ("source_checked", "nutritionist_reviewed")
+            ),
         )
-        for food in FOODS
+        .order_by(Food.id, FoodProfileVersion.version.desc())
+    ).all()
+    current: dict[str, tuple[Food, FoodProfileVersion]] = {}
+    for food, version in rows:
+        current.setdefault(food.id, (food, version))
+    if not current:
+        return []
+    portions = session.scalars(
+        select(FoodPortion)
+        .where(FoodPortion.food_id.in_(current))
+        .order_by(FoodPortion.food_id, FoodPortion.code)
+    ).all()
+    portions_by_food: dict[str, list[FoodPortion]] = {}
+    for portion in portions:
+        portions_by_food.setdefault(portion.food_id, []).append(portion)
+    return [
+        (food, version, portions_by_food.get(food_id, []))
+        for food_id, (food, version) in current.items()
     ]
 
 
-@app.post("/v1/recognition", response_model=RecognitionResult)
+def _database_food_response(
+    food: Food, version: FoodProfileVersion, portions: list[FoodPortion]
+) -> FoodResponse:
+    default_portion = next((item for item in portions if item.is_default), None)
+    if default_portion is None or version.kcal_per_100g is None:
+        raise HTTPException(status_code=503, detail="Published catalog is invalid")
+    return FoodResponse(
+        id=food.id,
+        name_fa=food.name_fa,
+        name_en=food.name_en,
+        kcal_per_100g=float(version.kcal_per_100g),
+        uncertainty_percent=float(version.uncertainty_percent),
+        protein_g_per_100g=float(version.protein_g_per_100g)
+        if version.protein_g_per_100g is not None
+        else None,
+        carb_g_per_100g=float(version.carb_g_per_100g)
+        if version.carb_g_per_100g is not None
+        else None,
+        fat_g_per_100g=float(version.fat_g_per_100g)
+        if version.fat_g_per_100g is not None
+        else None,
+        fiber_g_per_100g=float(version.fiber_g_per_100g)
+        if version.fiber_g_per_100g is not None
+        else None,
+        nutrition_status=version.review_state,
+        profile_version=version.version,
+        default_portion_id=default_portion.code,
+        portions=[
+            PortionResponse(
+                id=portion.code,
+                name_fa=portion.name_fa,
+                grams=float(portion.grams),
+            )
+            for portion in portions
+        ],
+    )
+
+
+@app.get("/v1/foods/{food_id}", response_model=FoodResponse)
+def read_food(food_id: str) -> FoodResponse:
+    if get_settings().app_env == "production":
+        with session_scope() as session:
+            match = next(
+                (item for item in _published_foods(session) if item[0].id == food_id),
+                None,
+            )
+            if match is None:
+                raise HTTPException(status_code=404, detail="Food not found")
+            return _database_food_response(*match)
+    try:
+        food = get_food(food_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail="Food not found") from error
+    return _fallback_food_response(food)
+
+
+@app.post(
+    "/v1/recognition",
+    response_model=RecognitionResult,
+    dependencies=[Depends(recognition_rate_limit)],
+)
 async def recognize_food(image: UploadFile = File(...)) -> RecognitionResult:
     try:
         validated_image = validate_image(await image.read())

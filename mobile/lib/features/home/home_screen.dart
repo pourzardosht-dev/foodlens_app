@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../diary/personal_data_api.dart';
 import '../recognition/recognition_api.dart';
 
 class DiaryEntry {
@@ -14,6 +15,10 @@ class DiaryEntry {
     required this.calories,
     required this.rangeMin,
     required this.rangeMax,
+    this.mealId,
+    this.componentId,
+    this.mealType = 'snack',
+    this.confidence,
   });
 
   final FoodCatalogItem food;
@@ -23,6 +28,17 @@ class DiaryEntry {
   final double calories;
   final double rangeMin;
   final double rangeMax;
+  final String? mealId;
+  final String? componentId;
+  final String mealType;
+  final double? confidence;
+}
+
+class _MealDraftResult {
+  const _MealDraftResult({required this.mealType, required this.entries});
+
+  final String mealType;
+  final List<DiaryEntry> entries;
 }
 
 class _PlateComponentDraft {
@@ -52,6 +68,7 @@ const _manualFoodChoice = FoodCatalogItem(
   uncertainty: 0,
   defaultPortionId: 'manual-100g',
   portions: [FoodPortion(id: 'manual-100g', name: '۱۰۰ گرم', grams: 100)],
+  nutritionStatus: 'user_provided',
 );
 
 FoodCatalogItem manualFoodCatalogItem({
@@ -64,12 +81,18 @@ FoodCatalogItem manualFoodCatalogItem({
   uncertainty: .30,
   defaultPortionId: 'manual-100g',
   portions: const [FoodPortion(id: 'manual-100g', name: '۱۰۰ گرم', grams: 100)],
+  nutritionStatus: 'user_provided',
 );
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.recognitionApi = const RecognitionApi()});
+  const HomeScreen({
+    super.key,
+    this.recognitionApi = const RecognitionApi(),
+    this.personalDataApi,
+  });
 
   final RecognitionApi recognitionApi;
+  final PersonalDataApi? personalDataApi;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -78,12 +101,104 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _picker = ImagePicker();
   final _entries = <DiaryEntry>[];
+  late final PersonalDataApi _personalDataApi;
   List<FoodCatalogItem> _foods = const [];
+  DateTime _selectedDay = DateTime.now();
+  DiaryNutrients? _dailyNutrients;
   Uint8List? _selectedImage;
   bool _isReadingImage = false;
+  bool _isLoadingDiary = false;
+  bool _isSavingMeal = false;
 
   double get _todayCalories =>
       _entries.fold(0, (sum, item) => sum + item.calories);
+
+  @override
+  void initState() {
+    super.initState();
+    _personalDataApi = widget.personalDataApi ?? PersonalDataApi();
+    _loadDiary();
+  }
+
+  Future<void> _loadDiary() async {
+    if (mounted) setState(() => _isLoadingDiary = true);
+    try {
+      if (!await _ensureFoodCatalog()) return;
+      final diary = await _personalDataApi.fetchDay(_selectedDay);
+      if (!mounted) return;
+      setState(() {
+        _dailyNutrients = diary.totals;
+        _entries
+          ..clear()
+          ..addAll(
+            diary.meals.expand(
+              (meal) => meal.components.map(
+                (component) => _entryFromPersisted(meal, component),
+              ),
+            ),
+          );
+      });
+    } on PersonalDataApiException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'دفتر آنلاین در دسترس نیست؛ تشخیص غذا همچنان فعال است.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingDiary = false);
+    }
+  }
+
+  DiaryEntry _entryFromPersisted(
+    PersistedMeal meal,
+    PersistedMealComponent component,
+  ) {
+    final knownFood = _foodById(component.foodId);
+    final calories = component.nutrients.kcal ?? 0;
+    final uncertainty = component.uncertaintyPercent / 100;
+    final portion = knownFood?.portions.cast<FoodPortion?>().firstWhere(
+      (item) => item?.id == component.portionCode,
+      orElse: () => null,
+    );
+    final resolvedPortion =
+        portion ??
+        FoodPortion(
+          id: component.portionCode ?? 'recorded-grams',
+          name: 'مقدار ثبت‌شده',
+          grams: component.quantity == null
+              ? component.grams
+              : component.grams / component.quantity!,
+        );
+    final food =
+        knownFood ??
+        FoodCatalogItem(
+          id: component.foodId,
+          name: component.foodName,
+          kcalPer100g: component.grams == 0
+              ? 0
+              : calories * 100 / component.grams,
+          uncertainty: uncertainty,
+          defaultPortionId: resolvedPortion.id,
+          portions: [resolvedPortion],
+          nutritionStatus: 'user_provided',
+        );
+    return DiaryEntry(
+      food: food,
+      portion: resolvedPortion,
+      quantity: component.quantity ?? component.grams / resolvedPortion.grams,
+      grams: component.grams,
+      calories: calories,
+      rangeMin: calories * (1 - uncertainty),
+      rangeMax: calories * (1 + uncertainty),
+      mealId: meal.id,
+      componentId: component.id,
+      mealType: meal.mealType,
+    );
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     setState(() => _isReadingImage = true);
@@ -181,6 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool recognitionUnavailable,
   }) async {
     final drafts = <_PlateComponentDraft>[];
+    var mealType = 'lunch';
     for (final component in recognition?.components ?? const []) {
       final food = _foodById(component.foodId);
       if (food == null) continue;
@@ -199,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
-    final entries = await showModalBottomSheet<List<DiaryEntry>>(
+    final result = await showModalBottomSheet<_MealDraftResult>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -306,7 +422,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                         .map(
                                           (food) => DropdownMenuItem(
                                             value: food,
-                                            child: Text(food.name),
+                                            child: Text(
+                                              food.isEstimated
+                                                  ? '${food.name} · برآوردی'
+                                                  : food.name,
+                                            ),
                                           ),
                                         )
                                         .toList(),
@@ -415,6 +535,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   if (drafts.isNotEmpty) ...[
                     const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      initialValue: mealType,
+                      decoration: const InputDecoration(
+                        labelText: 'نوع وعده',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'breakfast',
+                          child: Text('صبحانه'),
+                        ),
+                        DropdownMenuItem(value: 'lunch', child: Text('ناهار')),
+                        DropdownMenuItem(value: 'dinner', child: Text('شام')),
+                        DropdownMenuItem(
+                          value: 'snack',
+                          child: Text('میان‌وعده'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setSheetState(() => mealType = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.all(16),
                       color: const Color(0xFFE4EFE9),
@@ -427,25 +572,30 @@ class _HomeScreenState extends State<HomeScreen> {
                     FilledButton.icon(
                       onPressed: () => Navigator.pop(
                         context,
-                        drafts
-                            .map((draft) {
-                              final grams =
-                                  draft.portion.grams * draft.quantity;
-                              final calories =
-                                  grams * draft.food.kcalPer100g / 100;
-                              return DiaryEntry(
-                                food: draft.food,
-                                portion: draft.portion,
-                                quantity: draft.quantity,
-                                grams: grams,
-                                calories: calories,
-                                rangeMin:
-                                    calories * (1 - draft.food.uncertainty),
-                                rangeMax:
-                                    calories * (1 + draft.food.uncertainty),
-                              );
-                            })
-                            .toList(growable: false),
+                        _MealDraftResult(
+                          mealType: mealType,
+                          entries: drafts
+                              .map((draft) {
+                                final grams =
+                                    draft.portion.grams * draft.quantity;
+                                final calories =
+                                    grams * draft.food.kcalPer100g / 100;
+                                return DiaryEntry(
+                                  food: draft.food,
+                                  portion: draft.portion,
+                                  quantity: draft.quantity,
+                                  grams: grams,
+                                  calories: calories,
+                                  rangeMin:
+                                      calories * (1 - draft.food.uncertainty),
+                                  rangeMax:
+                                      calories * (1 + draft.food.uncertainty),
+                                  mealType: mealType,
+                                  confidence: draft.confidence,
+                                );
+                              })
+                              .toList(growable: false),
+                        ),
                       ),
                       icon: const Icon(Icons.check),
                       label: Text('ثبت ${drafts.length} جزء در وعده امروز'),
@@ -458,8 +608,54 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     );
-    if (entries != null && mounted) {
-      setState(() => _entries.insertAll(0, entries.reversed));
+    if (result != null && mounted) {
+      await _persistMeal(result);
+    }
+  }
+
+  Future<void> _persistMeal(_MealDraftResult result) async {
+    setState(() => _isSavingMeal = true);
+    try {
+      final components = <MealComponentInput>[];
+      for (final entry in result.entries) {
+        var foodId = entry.food.id;
+        if (foodId == 'manual-food') {
+          foodId = await _personalDataApi.createCustomFood(
+            name: entry.food.name,
+            kcalPer100g: entry.food.kcalPer100g,
+          );
+        }
+        components.add(
+          MealComponentInput(
+            foodId: foodId,
+            grams: entry.grams,
+            portionCode: entry.portion.id,
+            quantity: entry.quantity,
+            recognitionConfidence: entry.confidence,
+          ),
+        );
+      }
+      await _personalDataApi.createMeal(
+        mealType: result.mealType,
+        source: 'photo',
+        eatenAt: DateTime(
+          _selectedDay.year,
+          _selectedDay.month,
+          _selectedDay.day,
+          DateTime.now().hour,
+          DateTime.now().minute,
+        ),
+        components: components,
+      );
+      await _loadDiary();
+    } on PersonalDataApiException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('وعده ذخیره نشد؛ دوباره تلاش کنید.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSavingMeal = false);
     }
   }
 
@@ -655,6 +851,169 @@ class _HomeScreenState extends State<HomeScreen> {
         : 'تشخیص هوش مصنوعی با اطمینان $confidence٪؛ نام غذا را تأیید کنید.';
   }
 
+  Future<void> _deleteMeal(String mealId) async {
+    setState(() => _isSavingMeal = true);
+    try {
+      await _personalDataApi.deleteMeal(mealId);
+      await _loadDiary();
+    } on PersonalDataApiException {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('حذف وعده انجام نشد.')));
+      }
+    } finally {
+      if (mounted) setState(() => _isSavingMeal = false);
+    }
+  }
+
+  Future<void> _editEntry(DiaryEntry entry) async {
+    if (entry.mealId == null || entry.componentId == null) return;
+    final grams = await _editPortionWeight(context, initialGrams: entry.grams);
+    if (grams == null || !mounted) return;
+    setState(() => _isSavingMeal = true);
+    try {
+      await _personalDataApi.updateComponent(
+        mealId: entry.mealId!,
+        componentId: entry.componentId!,
+        component: MealComponentInput(
+          foodId: entry.food.id,
+          grams: grams,
+          portionCode: entry.portion.id,
+          quantity: grams / entry.portion.grams,
+        ),
+      );
+      await _loadDiary();
+    } on PersonalDataApiException {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('ویرایش وعده انجام نشد.')));
+      }
+    } finally {
+      if (mounted) setState(() => _isSavingMeal = false);
+    }
+  }
+
+  Future<void> _changeDay(int offset) async {
+    setState(() => _selectedDay = _selectedDay.add(Duration(days: offset)));
+    await _loadDiary();
+  }
+
+  Future<void> _showProfile() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'داده‌های من',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'این پروفایل ناشناس به همین دستگاه وابسته است. پاک‌کردن داده‌های مرورگر ممکن است دسترسی را از بین ببرد.',
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.download_outlined),
+                label: const Text('نمایش خروجی JSON'),
+                onPressed: () async {
+                  try {
+                    final data = await _personalDataApi.exportProfile();
+                    if (!sheetContext.mounted) return;
+                    await showDialog<void>(
+                      context: sheetContext,
+                      builder: (context) => AlertDialog(
+                        title: const Text('خروجی اطلاعات'),
+                        content: SizedBox(
+                          width: 520,
+                          child: SingleChildScrollView(
+                            child: SelectableText(data),
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('بستن'),
+                          ),
+                        ],
+                      ),
+                    );
+                  } on PersonalDataApiException {
+                    if (sheetContext.mounted) {
+                      ScaffoldMessenger.of(sheetContext).showSnackBar(
+                        const SnackBar(
+                          content: Text('دریافت خروجی انجام نشد.'),
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+              TextButton.icon(
+                icon: const Icon(Icons.delete_forever_outlined),
+                label: const Text('حذف کامل اطلاعات'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red.shade700,
+                ),
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: sheetContext,
+                    builder: (context) => AlertDialog(
+                      title: const Text('حذف کامل اطلاعات؟'),
+                      content: const Text('این عملیات قابل بازگشت نیست.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('انصراف'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('حذف'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true) return;
+                  try {
+                    await _personalDataApi.deleteProfile();
+                    if (!sheetContext.mounted) return;
+                    Navigator.pop(sheetContext);
+                    if (mounted) {
+                      setState(() {
+                        _entries.clear();
+                        _dailyNutrients = null;
+                      });
+                    }
+                  } on PersonalDataApiException {
+                    if (sheetContext.mounted) {
+                      ScaffoldMessenger.of(sheetContext).showSnackBar(
+                        const SnackBar(content: Text('حذف اطلاعات انجام نشد.')),
+                      );
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _mealTypeLabel(String value) => switch (value) {
+    'breakfast' => 'صبحانه',
+    'lunch' => 'ناهار',
+    'dinner' => 'شام',
+    _ => 'میان‌وعده',
+  };
+
   @override
   Widget build(BuildContext context) {
     const target = 2000.0;
@@ -665,7 +1024,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             tooltip: 'پروفایل',
-            onPressed: () {},
+            onPressed: _showProfile,
             icon: const Icon(Icons.account_circle_outlined),
           ),
           const SizedBox(width: 8),
@@ -688,16 +1047,47 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Text(
                     'غذای ایرانی را ثبت کنید و یک برآورد شفاف ببینید.',
                   ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'روز قبل',
+                        onPressed: _isLoadingDiary
+                            ? null
+                            : () => _changeDay(-1),
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                      Expanded(
+                        child: Text(
+                          '${_selectedDay.year}/${_selectedDay.month.toString().padLeft(2, '0')}/${_selectedDay.day.toString().padLeft(2, '0')}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'روز بعد',
+                        onPressed: _isLoadingDiary ? null : () => _changeDay(1),
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 22),
                   _CapturePanel(
-                    isLoading: _isReadingImage,
-                    onPressed: _isReadingImage ? null : _showImageSource,
+                    isLoading: _isReadingImage || _isSavingMeal,
+                    onPressed: _isReadingImage || _isSavingMeal
+                        ? null
+                        : _showImageSource,
                   ),
+                  if (_isLoadingDiary) ...[
+                    const SizedBox(height: 12),
+                    const LinearProgressIndicator(),
+                  ],
                   const SizedBox(height: 26),
                   _DailySummary(
                     calories: _todayCalories,
                     target: target,
                     progress: progress,
+                    nutrients: _dailyNutrients,
                   ),
                   const SizedBox(height: 28),
                   Row(
@@ -722,6 +1112,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _DiaryTile(
                           entry: entry,
                           quantityLabel: _formatQuantity(entry.quantity),
+                          mealTypeLabel: _mealTypeLabel(entry.mealType),
+                          onEdit: entry.componentId == null || _isSavingMeal
+                              ? null
+                              : () => _editEntry(entry),
+                          onDelete: entry.mealId == null || _isSavingMeal
+                              ? null
+                              : () => _deleteMeal(entry.mealId!),
                         ),
                       ),
                     ),
@@ -795,10 +1192,12 @@ class _DailySummary extends StatelessWidget {
     required this.calories,
     required this.target,
     required this.progress,
+    required this.nutrients,
   });
   final double calories;
   final double target;
   final double progress;
+  final DiaryNutrients? nutrients;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -825,10 +1224,26 @@ class _DailySummary extends StatelessWidget {
             backgroundColor: const Color(0xFFE4E0D6),
             color: const Color(0xFF237A57),
           ),
+          if (nutrients != null) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 16,
+              runSpacing: 8,
+              children: [
+                Text('پروتئین: ${_macro(nutrients!.protein)}'),
+                Text('کربوهیدرات: ${_macro(nutrients!.carbohydrate)}'),
+                Text('چربی: ${_macro(nutrients!.fat)}'),
+                Text('فیبر: ${_macro(nutrients!.fiber)}'),
+              ],
+            ),
+          ],
         ],
       ),
     ),
   );
+
+  String _macro(double? value) =>
+      value == null ? 'نامشخص' : '${value.toStringAsFixed(1)} g';
 }
 
 class _EmptyDiary extends StatelessWidget {
@@ -851,26 +1266,63 @@ class _EmptyDiary extends StatelessWidget {
 }
 
 class _DiaryTile extends StatelessWidget {
-  const _DiaryTile({required this.entry, required this.quantityLabel});
+  const _DiaryTile({
+    required this.entry,
+    required this.quantityLabel,
+    required this.mealTypeLabel,
+    required this.onEdit,
+    required this.onDelete,
+  });
   final DiaryEntry entry;
   final String quantityLabel;
+  final String mealTypeLabel;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) => Card(
     child: ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       leading: const Icon(Icons.ramen_dining_outlined),
-      title: Text(
-        entry.food.name,
-        style: const TextStyle(fontWeight: FontWeight.w800),
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(
+              entry.food.name,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+          if (entry.food.isEstimated) ...[
+            const SizedBox(width: 8),
+            const Text(
+              'برآوردی',
+              style: TextStyle(fontSize: 11, color: Color(0xFF7A5B00)),
+            ),
+          ],
+        ],
       ),
       subtitle: Text(
-        '$quantityLabel ${entry.portion.name}، ${entry.grams.round()} گرم',
+        '$mealTypeLabel · $quantityLabel ${entry.portion.name}، ${entry.grams.round()} گرم',
       ),
-      trailing: Text(
-        '${entry.calories.round()} kcal\n${entry.rangeMin.round()}–${entry.rangeMax.round()}',
-        textAlign: TextAlign.end,
-        style: const TextStyle(fontWeight: FontWeight.w700),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${entry.calories.round()} kcal\n${entry.rangeMin.round()}–${entry.rangeMax.round()}',
+            textAlign: TextAlign.end,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          IconButton(
+            tooltip: 'ویرایش وزن',
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined),
+          ),
+          IconButton(
+            tooltip: 'حذف وعده',
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline),
+          ),
+        ],
       ),
     ),
   );

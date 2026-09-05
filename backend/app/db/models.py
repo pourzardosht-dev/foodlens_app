@@ -148,6 +148,10 @@ class FoodProfileVersion(Base):
                 "retired_at IS NULL AND review_state IN "
                 "('source_checked', 'nutritionist_reviewed')"
             ),
+            sqlite_where=text(
+                "retired_at IS NULL AND review_state IN "
+                "('source_checked', 'nutritionist_reviewed')"
+            ),
         ),
     )
 
@@ -180,6 +184,7 @@ class FoodPortion(Base):
             "food_id",
             unique=True,
             postgresql_where=text("is_default"),
+            sqlite_where=text("is_default"),
         ),
     )
 
@@ -225,7 +230,9 @@ class Meal(Base):
 class MealComponent(Base):
     __tablename__ = "meal_components"
     __table_args__ = (
+        UniqueConstraint("meal_id", "position"),
         CheckConstraint("grams > 0 AND grams <= 5000", name="grams_range"),
+        CheckConstraint("position >= 0", name="position_nonnegative"),
         CheckConstraint(
             "recognition_confidence IS NULL OR "
             "(recognition_confidence >= 0 AND recognition_confidence <= 1)",
@@ -242,6 +249,7 @@ class MealComponent(Base):
     meal_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("meals.id", ondelete="CASCADE"), index=True
     )
+    position: Mapped[int] = mapped_column(Integer)
     food_id: Mapped[str] = mapped_column(ForeignKey("foods.id", ondelete="RESTRICT"))
     food_profile_version_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey(

@@ -11,11 +11,16 @@
 - محاسبه قطعی کالری و بازه عدم قطعیت
 - API فهرست غذاها و تخمین تغذیه
 - API تشخیص تصویر با provider قابل تعویض و حالت `unknown`
-- scaffold استقرار PostgreSQL، pgvector و MinIO
+- پروفایل ناشناس با token امن و دفتر غذایی پایدار مبتنی بر PostgreSQL
+- CRUD وعده و اجزای آن، غذای سفارشی خصوصی، export JSON و حذف کامل پروفایل
+- Nutrition Engine قطعی برای کالری، پروتئین، کربوهیدرات، چربی و فیبر با snapshot تاریخی
+- پیمایش روزها، خلاصه ماکروها، ویرایش و حذف وعده در Flutter
+- rate limit، request ID، متریک HTTP و audit log رویدادهای export و deletion
+- migration یک‌مرحله‌ای، backup رمزگذاری‌شده و restore test ایزوله
 
 اعداد تغذیه‌ای فعلی فقط seed توسعه هستند و پیش از انتشار باید توسط منبع معتبر و متخصص تغذیه بازبینی شوند.
 
-برنامه اجرایی persistence، دفتر غذایی، ماکروها، امنیت داده و مهاجرت PostgreSQL در [PRD زیرساخت داده شخصی و Nutrition Engine V1](docs/personal-data-nutrition-v1-prd.md) آمده است.
+جزئیات قراردادها و gateهای انتشار در [PRD زیرساخت داده شخصی و Nutrition Engine V1](docs/personal-data-nutrition-v1-prd.md) آمده است. کاتالوگ توسعه ۸۷ غذا همچنان `draft` است؛ production فقط نسخه‌های `source_checked` یا `nutritionist_reviewed` را برمی‌گرداند.
 
 ## اجرای backend
 
@@ -76,7 +81,7 @@ cp .env.example .env
 docker compose -p foodlens --env-file .env -f infra/compose.yaml up -d --build api
 ```
 
-زیرساخت schema و migration PostgreSQL اضافه شده است، اما APIهای پروفایل و diary هنوز در مرحله بعد پیاده‌سازی می‌شوند. Compose به‌صورت پیش‌فرض فقط API را اجرا می‌کند؛ PostgreSQL در profile اختیاری `database` و MinIO در profile جداگانه `object-storage` غیرفعال هستند. API فقط روی `127.0.0.1:18431` منتشر می‌شود. پیش از اجرا روی VPS مشترک، راهنمای [استقرار VPS](docs/vps-deployment.md) را دنبال کنید.
+Compose به‌صورت پیش‌فرض فقط API را اجرا می‌کند؛ PostgreSQL و migration task در profile اختیاری `database` و MinIO در profile جداگانه `object-storage` قرار دارند. API فقط روی `127.0.0.1:18431` منتشر می‌شود. پیش از rollout روی VPS مشترک، migration، backup و restore را طبق [راهنمای استقرار VPS](docs/vps-deployment.md) در staging واقعی PostgreSQL تمرین کنید.
 
 ## Vision API
 
@@ -121,6 +126,9 @@ python scripts/prepare_dataset.py "../food pic" "../dataset/manifests"
 3. معرفی منابع تغذیه‌ای قابل استناد یا متخصص تغذیه برای بازبینی seed data.
 4. انتخاب دامنه برای فعال‌سازی HTTPS در مرحله استقرار عمومی.
 
-## گام فنی بعدی
+## Gateهای انتشار باقی‌مانده
 
-اتصال Flutter به Recognition API، افزودن persistence با PostgreSQL، آپلود خصوصی تصاویر و ساخت benchmark مقایسه‌ای Gemini/OpenAI/DeepSeek.
+1. انتخاب ۲۰ غذای پرتکرار و ورود پنج nutrient از منبع دارای مجوز، سپس review و تغییر وضعیت به `source_checked`؛ مقدار macro بدون منبع ساخته نمی‌شود.
+2. اجرای migration، integration test، backup و restore روی PostgreSQL 17 واقعی؛ محیط توسعه فعلی Docker ندارد.
+3. benchmark حداقل ۱۰۰ تصویر مجاز و انتخاب provider بر پایه دقت، unknown recall، latency و هزینه.
+4. preflight و rollout مرحله‌ای روی VPS پس از انتخاب دامنه، بدون تغییر QuizLens یا containerهای نامرتبط.

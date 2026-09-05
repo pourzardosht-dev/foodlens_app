@@ -32,3 +32,8 @@ def session_scope() -> Iterator[Session]:
         raise
     finally:
         session.close()
+
+
+def get_db_session() -> Iterator[Session]:
+    with session_scope() as session:
+        yield session

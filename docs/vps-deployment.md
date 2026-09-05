@@ -45,4 +45,25 @@ docker compose -p foodlens --env-file .env -f infra/compose.yaml ps
 curl --fail http://127.0.0.1:${FOODLENS_API_PORT:-18431}/health
 ```
 
+## PostgreSQL rollout
+
+Enable the database and apply migrations as scoped FoodLens services:
+
+```bash
+docker compose -p foodlens --env-file .env -f infra/compose.yaml --profile database up -d postgres
+docker compose -p foodlens --env-file .env -f infra/compose.yaml --profile database run --rm migrate
+curl --fail http://127.0.0.1:${FOODLENS_API_PORT:-18431}/health/database
+```
+
+Set a unique `TOKEN_PEPPER` and an age recipient/identity in the server `.env`. Never copy the age private identity into the repository.
+
+Create an encrypted backup and perform a restore test in an isolated temporary database:
+
+```bash
+./infra/backup-postgres.sh .env /var/backups/foodlens/postgres
+./infra/test-postgres-restore.sh .env /var/backups/foodlens/postgres/daily/<backup>.dump.age
+```
+
+Schedule the backup script daily. It retains seven daily backups and five weeks of Sunday backups. The restore test verifies the encrypted checksum and reports profile, food, and meal row counts before deleting its temporary database.
+
 Do not expose PostgreSQL or MinIO directly to the internet. Do not modify the existing reverse proxy until a FoodLens domain is chosen and its current configuration has been backed up.

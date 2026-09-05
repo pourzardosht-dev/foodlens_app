@@ -96,6 +96,7 @@ class FoodCatalogItem {
     required this.uncertainty,
     required this.defaultPortionId,
     required this.portions,
+    this.nutritionStatus = 'draft',
   });
 
   final String id;
@@ -104,6 +105,11 @@ class FoodCatalogItem {
   final double uncertainty;
   final String defaultPortionId;
   final List<FoodPortion> portions;
+  final String nutritionStatus;
+
+  bool get isEstimated =>
+      nutritionStatus != 'source_checked' &&
+      nutritionStatus != 'nutritionist_reviewed';
 
   FoodPortion get defaultPortion => portions.firstWhere(
     (portion) => portion.id == defaultPortionId,
@@ -120,6 +126,7 @@ class FoodCatalogItem {
         portions: (json['portions'] as List<dynamic>)
             .map((item) => FoodPortion.fromJson(item as Map<String, dynamic>))
             .toList(growable: false),
+        nutritionStatus: json['nutrition_status'] as String? ?? 'draft',
       );
 }
 

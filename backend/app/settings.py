@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     database_url: str | None = None
     token_pepper: SecretStr | None = None
+    app_env: str = "development"
 
 
 @lru_cache
