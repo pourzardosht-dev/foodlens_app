@@ -1,5 +1,4 @@
 import io
-from pathlib import Path
 
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -303,15 +302,16 @@ def test_recognition_rejects_non_image() -> None:
     assert response.json()["detail"] == "File is not a valid image"
 
 
-def test_recognition_normalizes_avif_from_gold_dataset(monkeypatch) -> None:
+def test_recognition_normalizes_avif(monkeypatch) -> None:
     monkeypatch.setenv("VISION_PROVIDER", "mock")
-    image_path = (
-        Path(__file__).parents[2] / "food pic" / "فسنجان" / "fesenjan171.avif"
+    image_bytes = io.BytesIO()
+    Image.new("RGB", (32, 32), color=(90, 120, 60)).save(
+        image_bytes, format="AVIF"
     )
 
     response = client.post(
         "/v1/recognition",
-        files={"image": (image_path.name, image_path.read_bytes(), "image/avif")},
+        files={"image": ("fixture.avif", image_bytes.getvalue(), "image/avif")},
     )
 
     assert response.status_code == 200
