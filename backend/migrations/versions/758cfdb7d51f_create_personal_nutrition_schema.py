@@ -1,7 +1,7 @@
 """create personal nutrition schema
 
 Revision ID: 758cfdb7d51f
-Revises: 
+Revises:
 Create Date: 2026-09-05 09:31:01.536304
 """
 from collections.abc import Sequence
