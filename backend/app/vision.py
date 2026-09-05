@@ -7,7 +7,7 @@ import httpx
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
 
-from app.nutrition import FOODS
+from app.nutrition import FOODS, RECOGNITION_FAMILIES
 
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
@@ -112,16 +112,24 @@ class MockVisionProvider(VisionProvider):
 
 
 def build_recognition_prompt() -> str:
-    food_catalog = "; ".join(
-        f"{food.id}: {food.name_fa} ({food.name_en}) - {food.recognition_hints}"
-        for food in FOODS
-    )
+    foods_by_id = {food.id: food for food in FOODS}
+    family_sections = []
+    for family_name, food_ids in RECOGNITION_FAMILIES.items():
+        family_catalog = "; ".join(
+            f"{food.id}: {food.name_fa} ({food.name_en}) - {food.recognition_hints}"
+            for food_id in food_ids
+            for food in (foods_by_id[food_id],)
+        )
+        family_sections.append(f"[{family_name}] {family_catalog}")
+    food_catalog = "\n".join(family_sections)
     return (
-        "Classify the main Iranian food in this image. Only choose from this catalog: "
+        "Classify the main Iranian food in this image. First identify its likely family, "
+        "then compare every candidate within that family. Only choose from this catalog:\n"
         f"{food_catalog}. Return null food_id when the image is not food, is outside the "
         "catalog, or is too ambiguous. Compare the visual evidence against the catalog "
-        "hints, especially for similar stews; do not choose the closest-looking item when "
-        "its defining ingredients are absent. Confidence must reflect uncertainty; set "
+        "hints, especially for visually similar foods in the same family; do not choose "
+        "the closest-looking item when its defining ingredients are absent. Confidence "
+        "must reflect uncertainty; set "
         "needs_confirmation=true below 0.85. Do not estimate calories or portion."
     )
 

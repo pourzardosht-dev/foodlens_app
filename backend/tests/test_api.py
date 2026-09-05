@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.main import app
+from app.nutrition import FOODS, RECOGNITION_FAMILIES
 from app.vision import GEMINI_RESPONSE_SCHEMA, build_recognition_prompt
 
 
@@ -27,44 +28,76 @@ def test_food_catalog_includes_similar_gilaki_stews() -> None:
     assert foods_by_id["anarbij"]["name_fa"] == "اناربیج"
 
 
-def test_food_catalog_contains_25_complete_profiles() -> None:
+def test_food_catalog_contains_45_complete_profiles() -> None:
     response = client.get("/v1/foods")
 
     assert response.status_code == 200
     foods = response.json()
-    assert len(foods) == 25
+    assert len(foods) == 45
     assert {food["id"] for food in foods} == {
         "abgoosht",
         "adas-polo",
         "anarbij",
         "ash-reshteh",
+        "ash-doogh",
         "baghala-ghatogh",
+        "baghali-polo-goosht",
         "cooked-rice",
         "dolmeh-barg-mo",
         "fesenjan",
+        "ghalieh-mahi",
         "gheimeh",
         "gheimeh-bademjan",
         "ghormeh-sabzi",
         "iranian-macaroni",
         "joojeh-kebab",
+        "kabab-bakhtiari",
         "kabab-barg",
+        "kabab-tabei",
+        "kabab-torsh",
         "kashk-bademjan",
         "khoresh-karafs",
+        "khoresh-aloo-esfenaj",
+        "khoresh-bademjan",
         "koobideh-kebab",
         "kookoo-sabzi",
         "koofteh-tabrizi",
         "kotlet",
         "loobia-polo",
+        "mahi-shekam-por",
+        "meygoo-polo",
         "mirza-ghasemi",
+        "morgh-torsh",
         "sabzi-polo-mahi",
         "tahchin-morgh",
+        "torsh-tareh",
+        "vavishka",
         "zereshk-polo-morgh",
+        "adasi",
+        "albaloo-polo",
+        "estamboli-polo",
+        "halim",
+        "kalam-polo-shirazi",
+        "reshteh-polo",
+        "shishlik",
     }
     for food in foods:
         assert food["kcal_per_100g"] > 0
         assert 0 < food["uncertainty_percent"] < 100
         portion_ids = {portion["id"] for portion in food["portions"]}
         assert food["default_portion_id"] in portion_ids
+
+
+def test_recognition_families_cover_catalog_once() -> None:
+    food_ids = {food.id for food in FOODS}
+    grouped_ids = [
+        food_id
+        for family_food_ids in RECOGNITION_FAMILIES.values()
+        for food_id in family_food_ids
+    ]
+
+    assert set(grouped_ids) == food_ids
+    assert len(grouped_ids) == len(set(grouped_ids))
 
 
 def test_recognition_prompt_distinguishes_similar_gilaki_stews() -> None:
@@ -77,6 +110,18 @@ def test_recognition_prompt_distinguishes_similar_gilaki_stews() -> None:
     assert "walnut, pomegranate" in prompt
     assert "small meatballs" in prompt
     assert "do not choose the closest-looking item" in prompt
+
+
+def test_recognition_prompt_groups_similar_foods_by_family() -> None:
+    prompt = build_recognition_prompt()
+
+    assert "[stews]" in prompt
+    assert "[rice dishes]" in prompt
+    assert "[kebabs]" in prompt
+    assert "First identify its likely family" in prompt
+    assert prompt.index("[stews]") < prompt.index("[rice dishes]")
+    assert "alternating chunks of saffron chicken and red meat" in prompt
+    assert "cherries are larger and juicier than barberries" in prompt
 
 
 def test_health_check() -> None:
