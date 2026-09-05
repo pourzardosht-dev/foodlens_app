@@ -163,6 +163,7 @@ def create_custom_food(
                 version=1,
                 source_id=source.id,
                 review_state="draft",
+                reviewer_note="Nutrition values entered by the profile owner.",
                 kcal_per_100g=request.kcal_per_100g,
                 protein_g_per_100g=request.protein_g_per_100g,
                 carb_g_per_100g=request.carb_g_per_100g,
@@ -247,6 +248,7 @@ def update_custom_food(
             version=current.version + 1,
             source_id=source.id,
             review_state="draft",
+            reviewer_note="Updated nutrition values entered by the profile owner.",
             effective_at=now,
             **values,
         )

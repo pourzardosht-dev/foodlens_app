@@ -66,4 +66,15 @@ Create an encrypted backup and perform a restore test in an isolated temporary d
 
 Schedule the backup script daily. It retains seven daily backups and five weeks of Sunday backups. The restore test verifies the encrypted checksum and reports profile, food, and meal row counts before deleting its temporary database.
 
+After publishing the initial nutrition release, run the disposable production smoke test. It deletes its profile and records even when a later assertion fails:
+
+```bash
+cd backend
+python scripts/smoke_personal_data.py \
+	--base-url https://api.example.com \
+	--origin https://app.example.com
+```
+
+The smoke test checks health, database connectivity, CORS, the production publication gate, profile and diary CRUD, JSON export, full deletion, and the diary p95 target.
+
 Do not expose PostgreSQL or MinIO directly to the internet. Do not modify the existing reverse proxy until a FoodLens domain is chosen and its current configuration has been backed up.

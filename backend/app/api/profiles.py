@@ -165,6 +165,7 @@ def export_profile(profile: CurrentProfile, session: DatabaseSession) -> dict[st
                 "version": version.version,
                 "source_id": str(version.source_id),
                 "review_state": version.review_state,
+                "reviewer_note": version.reviewer_note,
                 "kcal_per_100g": version.kcal_per_100g,
                 "protein_g_per_100g": version.protein_g_per_100g,
                 "carb_g_per_100g": version.carb_g_per_100g,

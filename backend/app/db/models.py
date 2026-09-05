@@ -164,6 +164,7 @@ class FoodProfileVersion(Base):
         ForeignKey("nutrition_sources.id", ondelete="RESTRICT")
     )
     review_state: Mapped[str] = mapped_column(String(30))
+    reviewer_note: Mapped[str | None] = mapped_column(Text)
     kcal_per_100g: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
     protein_g_per_100g: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))
     carb_g_per_100g: Mapped[Decimal | None] = mapped_column(Numeric(10, 3))

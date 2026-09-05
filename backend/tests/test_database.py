@@ -77,6 +77,7 @@ def test_catalog_snapshot_matches_current_seed() -> None:
 
 def test_schema_contains_all_v1_tables_and_compiles_for_postgresql() -> None:
     assert set(Base.metadata.tables) == EXPECTED_TABLES
+    assert "reviewer_note" in Base.metadata.tables["food_profile_versions"].columns
 
     dialect = postgresql.dialect()
     for table in Base.metadata.sorted_tables:

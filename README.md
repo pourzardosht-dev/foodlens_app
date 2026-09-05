@@ -20,6 +20,8 @@
 
 اعداد تغذیه‌ای فعلی فقط seed توسعه هستند و پیش از انتشار باید توسط منبع معتبر و متخصص تغذیه بازبینی شوند.
 
+فرمت release و importer کنترل‌شده برای ۲۰ غذای نخست در [راهنمای انتشار داده تغذیه‌ای](docs/nutrition-release.md) مستند شده است.
+
 جزئیات قراردادها و gateهای انتشار در [PRD زیرساخت داده شخصی و Nutrition Engine V1](docs/personal-data-nutrition-v1-prd.md) آمده است. کاتالوگ توسعه ۸۷ غذا همچنان `draft` است؛ production فقط نسخه‌های `source_checked` یا `nutritionist_reviewed` را برمی‌گرداند.
 
 ## اجرای backend
@@ -118,6 +120,8 @@ python scripts/prepare_dataset.py "../food pic" "../dataset/manifests"
 ```
 
 ابزار، تصاویر کوچک‌تر از 224px را در `excluded.jsonl` ثبت می‌کند و duplicateهای دقیق و نزدیک را همیشه در یک split نگه می‌دارد. اگر تصاویر مشابه در دو کلاس متفاوت باشند، هر دو با دلیل `label_conflict` از benchmark کنار گذاشته می‌شوند. پوشه‌های داده خام و manifest تولیدشده عمداً در Git نادیده گرفته می‌شوند.
+
+برای اجرای ارزیابی تکرارپذیر Recognition API و گزارش accuracy، unknown rate و latency، [راهنمای benchmark](docs/recognition-benchmark.md) را ببینید.
 
 ## موارد موردنیاز از مالک محصول
 
