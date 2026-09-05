@@ -14,21 +14,60 @@ class RecognitionResult {
     required this.confidence,
     required this.isFood,
     required this.needsConfirmation,
+    required this.components,
   });
 
   final String? foodId;
   final double confidence;
   final bool isFood;
   final bool needsConfirmation;
+  final List<RecognizedComponent> components;
 
   factory RecognitionResult.fromJson(Map<String, dynamic> json) {
+    final foodId = json['food_id'] as String?;
+    final componentsJson = json['components'] as List<dynamic>?;
+    final components = componentsJson
+        ?.map(
+          (item) => RecognizedComponent.fromJson(item as Map<String, dynamic>),
+        )
+        .toList(growable: false);
     return RecognitionResult(
-      foodId: json['food_id'] as String?,
+      foodId: foodId,
       confidence: (json['confidence'] as num).toDouble(),
       isFood: json['is_food'] as bool,
       needsConfirmation: json['needs_confirmation'] as bool,
+      components: components != null && components.isNotEmpty
+          ? components
+          : foodId == null
+          ? const []
+          : [
+              RecognizedComponent(
+                foodId: foodId,
+                confidence: (json['confidence'] as num).toDouble(),
+                estimatedGrams: null,
+              ),
+            ],
     );
   }
+}
+
+class RecognizedComponent {
+  const RecognizedComponent({
+    required this.foodId,
+    required this.confidence,
+    required this.estimatedGrams,
+  });
+
+  final String foodId;
+  final double confidence;
+  final double? estimatedGrams;
+
+  factory RecognizedComponent.fromJson(Map<String, dynamic> json) =>
+      RecognizedComponent(
+        foodId: json['food_id'] as String,
+        confidence: (json['confidence'] as num).toDouble(),
+        estimatedGrams: (json['estimated_grams'] as num?)?.toDouble(),
+      );
 }
 
 class FoodPortion {

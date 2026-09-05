@@ -28,12 +28,12 @@ def test_food_catalog_includes_similar_gilaki_stews() -> None:
     assert foods_by_id["anarbij"]["name_fa"] == "اناربیج"
 
 
-def test_food_catalog_contains_46_complete_profiles() -> None:
+def test_food_catalog_contains_52_complete_profiles() -> None:
     response = client.get("/v1/foods")
 
     assert response.status_code == 200
     foods = response.json()
-    assert len(foods) == 46
+    assert len(foods) == 52
     assert {food["id"] for food in foods} == {
         "abgoosht",
         "adas-polo",
@@ -42,6 +42,7 @@ def test_food_catalog_contains_46_complete_profiles() -> None:
         "ash-doogh",
         "baghala-ghatogh",
         "baghali-polo-goosht",
+        "bread-tahdig",
         "cooked-rice",
         "dolmeh-barg-mo",
         "fesenjan",
@@ -69,6 +70,11 @@ def test_food_catalog_contains_46_complete_profiles() -> None:
         "meygoo-polo",
         "mirza-ghasemi",
         "morgh-torsh",
+        "plain-yogurt",
+        "potato-tahdig",
+        "rice-tahdig",
+        "saffron-rice",
+        "salad-shirazi",
         "sabzi-polo-mahi",
         "tahchin-morgh",
         "torsh-tareh",
@@ -119,12 +125,27 @@ def test_recognition_prompt_groups_similar_foods_by_family() -> None:
     assert "[stews]" in prompt
     assert "[rice dishes]" in prompt
     assert "[kebabs]" in prompt
-    assert "First identify its likely family" in prompt
+    assert "[side dishes]" in prompt
+    assert "identify each component's likely family" in prompt
     assert prompt.index("[stews]") < prompt.index("[rice dishes]")
     assert "alternating chunks of saffron chicken and red meat" in prompt
     assert "cherries are larger and juicier than barberries" in prompt
     assert "khoresh-bamieh" in prompt
     assert "whole green okra pods" in prompt
+    assert "every distinct visible food component" in prompt
+    assert "estimated_grams" in prompt
+    assert "Omit unsupported side dishes" in prompt
+
+
+def test_gemini_schema_requires_independent_food_components() -> None:
+    components = GEMINI_RESPONSE_SCHEMA["properties"]["components"]
+
+    assert components["maxItems"] == 8
+    assert components["items"]["required"] == [
+        "food_id",
+        "confidence",
+        "estimated_grams",
+    ]
 
 
 def test_health_check() -> None:
@@ -196,6 +217,7 @@ def test_recognition_accepts_valid_jpeg_with_mock_provider(monkeypatch) -> None:
         "is_food": True,
         "needs_confirmation": True,
         "alternatives": [],
+        "components": [],
     }
 
 

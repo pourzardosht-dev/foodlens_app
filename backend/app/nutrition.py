@@ -56,7 +56,7 @@ FOODS: tuple[FoodProfile, ...] = (
         id="cooked-rice",
         name_fa="برنج پخته",
         name_en="Cooked Rice",
-        recognition_hints="separate cooked rice grains, white or saffron colored",
+        recognition_hints="separate plain cooked white rice grains without mixed ingredients",
         kcal_per_100g=130,
         uncertainty_percent=10,
         default_portion_id="scoop",
@@ -64,6 +64,99 @@ FOODS: tuple[FoodProfile, ...] = (
             PortionUnit("tablespoon", "قاشق غذاخوری", 18),
             PortionUnit("scoop", "کفگیر", 110),
             PortionUnit("plate", "بشقاب متوسط", 330),
+        ),
+    ),
+    FoodProfile(
+        id="saffron-rice",
+        name_fa="برنج زعفرانی",
+        name_en="Saffron Rice",
+        recognition_hints=(
+            "a distinct serving of uniformly yellow saffron rice; do not classify a small "
+            "yellow garnish on white rice as a separate component"
+        ),
+        kcal_per_100g=145,
+        uncertainty_percent=15,
+        default_portion_id="scoop",
+        portions=(
+            PortionUnit("tablespoon", "قاشق غذاخوری", 18),
+            PortionUnit("scoop", "کفگیر", 110),
+            PortionUnit("plate", "بشقاب متوسط", 330),
+        ),
+    ),
+    FoodProfile(
+        id="rice-tahdig",
+        name_fa="ته‌دیگ برنج",
+        name_en="Rice Tahdig",
+        recognition_hints="crisp golden-brown compact rice crust with visible fused rice grains",
+        kcal_per_100g=280,
+        uncertainty_percent=25,
+        default_portion_id="piece",
+        portions=(
+            PortionUnit("small-piece", "تکه کوچک", 35),
+            PortionUnit("piece", "یک تکه", 70),
+        ),
+    ),
+    FoodProfile(
+        id="bread-tahdig",
+        name_fa="ته‌دیگ نان",
+        name_en="Bread Tahdig",
+        recognition_hints=(
+            "thin crisp golden fried flatbread sheet or shard from the bottom of a rice pot; "
+            "no fused rice grains"
+        ),
+        kcal_per_100g=330,
+        uncertainty_percent=28,
+        default_portion_id="piece",
+        portions=(
+            PortionUnit("small-piece", "تکه کوچک", 25),
+            PortionUnit("piece", "یک تکه", 50),
+        ),
+    ),
+    FoodProfile(
+        id="potato-tahdig",
+        name_fa="ته‌دیگ سیب‌زمینی",
+        name_en="Potato Tahdig",
+        recognition_hints=(
+            "round thin potato slices fried golden-brown as a rice-pot crust; not loose fries"
+        ),
+        kcal_per_100g=260,
+        uncertainty_percent=27,
+        default_portion_id="piece",
+        portions=(
+            PortionUnit("piece", "یک برش", 35),
+            PortionUnit("three-pieces", "سه برش", 105),
+        ),
+    ),
+    FoodProfile(
+        id="salad-shirazi",
+        name_fa="سالاد شیرازی",
+        name_en="Salad Shirazi",
+        recognition_hints=(
+            "finely diced cucumber, tomato and onion salad, usually in a separate small pile "
+            "or bowl without lettuce"
+        ),
+        kcal_per_100g=35,
+        uncertainty_percent=22,
+        default_portion_id="bowl",
+        portions=(
+            PortionUnit("tablespoon", "قاشق غذاخوری", 20),
+            PortionUnit("bowl", "کاسه کوچک", 120),
+        ),
+    ),
+    FoodProfile(
+        id="plain-yogurt",
+        name_fa="ماست ساده",
+        name_en="Plain Yogurt",
+        recognition_hints=(
+            "smooth plain white yogurt served as a distinct side in a small bowl; "
+            "no cucumber pieces or visible herbs"
+        ),
+        kcal_per_100g=65,
+        uncertainty_percent=18,
+        default_portion_id="bowl",
+        portions=(
+            PortionUnit("tablespoon", "قاشق غذاخوری", 25),
+            PortionUnit("bowl", "کاسه کوچک", 150),
         ),
     ),
     FoodProfile(
@@ -774,6 +867,10 @@ RECOGNITION_FAMILIES: dict[str, tuple[str, ...]] = {
     ),
     "rice dishes": (
         "cooked-rice",
+        "saffron-rice",
+        "rice-tahdig",
+        "bread-tahdig",
+        "potato-tahdig",
         "zereshk-polo-morgh",
         "loobia-polo",
         "adas-polo",
@@ -813,6 +910,10 @@ RECOGNITION_FAMILIES: dict[str, tuple[str, ...]] = {
         "koofteh-tabrizi",
         "vavishka",
         "mahi-shekam-por",
+    ),
+    "side dishes": (
+        "salad-shirazi",
+        "plain-yogurt",
     ),
     "pasta": ("iranian-macaroni",),
 }

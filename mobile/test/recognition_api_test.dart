@@ -64,6 +64,14 @@ void main() {
           'is_food': true,
           'needs_confirmation': false,
           'alternatives': <Object>[],
+          'components': [
+            {
+              'food_id': 'cooked-rice',
+              'confidence': 0.89,
+              'estimated_grams': 250,
+            },
+            {'food_id': 'fesenjan', 'confidence': 0.92, 'estimated_grams': 180},
+          ],
         }),
         200,
       );
@@ -83,5 +91,34 @@ void main() {
     expect(result.foodId, 'fesenjan');
     expect(result.confidence, 0.92);
     expect(result.needsConfirmation, isFalse);
+    expect(result.components, hasLength(2));
+    expect(result.components.first.foodId, 'cooked-rice');
+    expect(result.components.first.estimatedGrams, 250);
+  });
+
+  test('converts a legacy recognition response to one component', () async {
+    final client = MockClient(
+      (_) async => http.Response(
+        jsonEncode({
+          'food_id': 'fesenjan',
+          'confidence': 0.92,
+          'is_food': true,
+          'needs_confirmation': false,
+          'alternatives': <Object>[],
+        }),
+        200,
+      ),
+    );
+    final api = RecognitionApi(
+      client: client,
+      baseUrl: 'https://api.example.test',
+    );
+    final image = XFile.fromData(Uint8List(1), name: 'food.jpg');
+
+    final result = await api.recognize(image);
+
+    expect(result.components, hasLength(1));
+    expect(result.components.single.foodId, 'fesenjan');
+    expect(result.components.single.estimatedGrams, isNull);
   });
 }

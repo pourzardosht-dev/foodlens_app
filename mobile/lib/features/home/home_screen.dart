@@ -25,6 +25,21 @@ class DiaryEntry {
   final double rangeMax;
 }
 
+class _PlateComponentDraft {
+  _PlateComponentDraft({
+    required this.food,
+    required this.portion,
+    required this.quantity,
+    required this.confidence,
+  });
+
+  FoodCatalogItem food;
+  FoodPortion portion;
+  double quantity;
+  final double? confidence;
+  int fieldRevision = 0;
+}
+
 double quantityForGrams({
   required double grams,
   required double portionGrams,
@@ -165,28 +180,40 @@ class _HomeScreenState extends State<HomeScreen> {
     RecognitionResult? recognition,
     required bool recognitionUnavailable,
   }) async {
-    FoodCatalogItem? selectedFood;
-    if (recognition?.foodId case final foodId?) {
-      selectedFood = _foods.cast<FoodCatalogItem?>().firstWhere(
-        (food) => food?.id == foodId,
-        orElse: () => null,
+    final drafts = <_PlateComponentDraft>[];
+    for (final component in recognition?.components ?? const []) {
+      final food = _foodById(component.foodId);
+      if (food == null) continue;
+      final portion = food.defaultPortion;
+      drafts.add(
+        _PlateComponentDraft(
+          food: food,
+          portion: portion,
+          quantity: component.estimatedGrams == null
+              ? 1
+              : quantityForGrams(
+                  grams: component.estimatedGrams!,
+                  portionGrams: portion.grams,
+                ),
+          confidence: component.confidence,
+        ),
       );
     }
-    FoodPortion? selectedPortion = selectedFood?.defaultPortion;
-    double quantity = 1;
-    var foodFieldRevision = 0;
-    final entry = await showModalBottomSheet<DiaryEntry>(
+    final entries = await showModalBottomSheet<List<DiaryEntry>>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) {
-          final activeFood = selectedFood;
-          final activePortion = selectedPortion;
-          final grams = (activePortion?.grams ?? 0) * quantity;
-          final calories = grams * (activeFood?.kcalPer100g ?? 0) / 100;
-          final rangeMin = calories * (1 - (activeFood?.uncertainty ?? 0));
-          final rangeMax = calories * (1 + (activeFood?.uncertainty ?? 0));
+          final totalCalories = drafts.fold<double>(
+            0,
+            (sum, draft) =>
+                sum +
+                draft.portion.grams *
+                    draft.quantity *
+                    draft.food.kcalPer100g /
+                    100,
+          );
           return SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -204,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   const SizedBox(height: 20),
                   Text(
-                    'تأیید نتیجه',
+                    'اجزای بشقاب',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -217,173 +244,211 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  DropdownButtonFormField<FoodCatalogItem>(
-                    key: ValueKey(
-                      'food-$foodFieldRevision-${activeFood?.id ?? 'none'}',
+                  if (drafts.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        'جزء قابل تشخیصی پیدا نشد. غذاهای بشقاب را اضافه کنید.',
+                        textAlign: TextAlign.center,
+                      ),
                     ),
-                    initialValue: selectedFood,
-                    decoration: const InputDecoration(
-                      labelText: 'غذا',
-                      hintText: 'غذای درست را انتخاب کنید',
-                      border: OutlineInputBorder(),
-                    ),
-                    items:
-                        [
-                              _manualFoodChoice,
-                              if (activeFood?.id == 'manual-food') activeFood!,
-                              ..._foods,
-                            ]
-                            .map(
-                              (food) => DropdownMenuItem(
-                                value: food,
-                                child: food == _manualFoodChoice
-                                    ? const Row(
-                                        children: [
-                                          Icon(Icons.edit_outlined, size: 20),
-                                          SizedBox(width: 8),
-                                          Flexible(
-                                            child: Text(
-                                              'ورود نام غذا به‌صورت دستی',
-                                            ),
+                  ...drafts.asMap().entries.map((item) {
+                    final index = item.key;
+                    final draft = item.value;
+                    final grams = draft.portion.grams * draft.quantity;
+                    final calories = grams * draft.food.kcalPer100g / 100;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'جزء ${index + 1}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                  if (draft.confidence case final confidence?)
+                                    Text(
+                                      '${(confidence * 100).round()}٪ اطمینان',
+                                    ),
+                                  IconButton(
+                                    tooltip: 'حذف جزء',
+                                    onPressed: () => setSheetState(
+                                      () => drafts.removeAt(index),
+                                    ),
+                                    icon: const Icon(Icons.delete_outline),
+                                  ),
+                                ],
+                              ),
+                              DropdownButtonFormField<FoodCatalogItem>(
+                                key: ValueKey(
+                                  'component-$index-${draft.fieldRevision}-${draft.food.id}',
+                                ),
+                                initialValue: draft.food,
+                                decoration: const InputDecoration(
+                                  labelText: 'غذا',
+                                  border: OutlineInputBorder(),
+                                ),
+                                items:
+                                    [
+                                          _manualFoodChoice,
+                                          if (draft.food.id == 'manual-food')
+                                            draft.food,
+                                          ..._foods,
+                                        ]
+                                        .map(
+                                          (food) => DropdownMenuItem(
+                                            value: food,
+                                            child: Text(food.name),
                                           ),
-                                        ],
-                                      )
-                                    : Text(food.name),
+                                        )
+                                        .toList(),
+                                onChanged: (food) async {
+                                  var selected = food;
+                                  if (food == _manualFoodChoice) {
+                                    selected = await _createManualFood(context);
+                                    if (!context.mounted) return;
+                                  }
+                                  setSheetState(() {
+                                    draft.fieldRevision++;
+                                    if (selected != null) {
+                                      draft.food = selected;
+                                      draft.portion = selected.defaultPortion;
+                                      draft.quantity = 1;
+                                    }
+                                  });
+                                },
                               ),
-                            )
-                            .toList(),
-                    onChanged: (food) async {
-                      if (food == _manualFoodChoice) {
-                        final manualFood = await _createManualFood(context);
-                        if (!context.mounted) return;
-                        setSheetState(() {
-                          foodFieldRevision++;
-                          if (manualFood != null) {
-                            selectedFood = manualFood;
-                            selectedPortion = manualFood.defaultPortion;
-                            quantity = 1;
-                          }
-                        });
-                      } else if (food != null) {
-                        setSheetState(() {
-                          selectedFood = food;
-                          selectedPortion = food.defaultPortion;
-                          quantity = 1;
-                        });
-                      }
-                    },
+                              const SizedBox(height: 12),
+                              DropdownButtonFormField<FoodPortion>(
+                                key: ValueKey(
+                                  'component-portion-$index-${draft.food.id}',
+                                ),
+                                initialValue: draft.portion,
+                                decoration: const InputDecoration(
+                                  labelText: 'واحد اندازه‌گیری',
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: draft.food.portions
+                                    .map(
+                                      (portion) => DropdownMenuItem(
+                                        value: portion,
+                                        child: Text(portion.name),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (portion) {
+                                  if (portion != null) {
+                                    setSheetState(() {
+                                      draft.portion = portion;
+                                      draft.quantity = 1;
+                                    });
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '${grams.round()} گرم · ${calories.round()} کیلوکالری',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton.outlined(
+                                    tooltip: 'ویرایش وزن',
+                                    onPressed: () async {
+                                      final edited = await _editPortionWeight(
+                                        context,
+                                        initialGrams: grams,
+                                      );
+                                      if (edited != null) {
+                                        setSheetState(
+                                          () =>
+                                              draft.quantity = quantityForGrams(
+                                                grams: edited,
+                                                portionGrams:
+                                                    draft.portion.grams,
+                                              ),
+                                        );
+                                      }
+                                    },
+                                    icon: const Icon(Icons.scale_outlined),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                  OutlinedButton.icon(
+                    onPressed: drafts.length >= 8
+                        ? null
+                        : () async {
+                            final food = await _selectFood(context);
+                            if (food != null) {
+                              setSheetState(
+                                () => drafts.add(
+                                  _PlateComponentDraft(
+                                    food: food,
+                                    portion: food.defaultPortion,
+                                    quantity: 1,
+                                    confidence: null,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                    icon: const Icon(Icons.add),
+                    label: const Text('افزودن جزء دیگر'),
                   ),
-                  if (activeFood != null && activePortion != null) ...[
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<FoodPortion>(
-                      key: ValueKey('portion-${activeFood.id}'),
-                      initialValue: activePortion,
-                      decoration: const InputDecoration(
-                        labelText: 'واحد اندازه‌گیری',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: activeFood.portions
-                          .map(
-                            (portion) => DropdownMenuItem(
-                              value: portion,
-                              child: Text(
-                                '${portion.name} (${portion.grams.round()} گرم)',
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (portion) {
-                        if (portion != null) {
-                          setSheetState(() {
-                            selectedPortion = portion;
-                            quantity = 1;
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'مقدار: ${_formatQuantity(quantity)} ${activePortion.name}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
-                        IconButton.outlined(
-                          tooltip: 'کاهش مقدار',
-                          onPressed: quantity > .5
-                              ? () => setSheetState(() => quantity -= .5)
-                              : null,
-                          icon: const Icon(Icons.remove),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton.filled(
-                          tooltip: 'افزایش مقدار',
-                          onPressed: () => setSheetState(() => quantity += .5),
-                          icon: const Icon(Icons.add),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      key: const Key('edit-portion-weight'),
-                      onPressed: () async {
-                        final editedGrams = await _editPortionWeight(
-                          context,
-                          initialGrams: grams,
-                        );
-                        if (editedGrams != null) {
-                          setSheetState(
-                            () => quantity = quantityForGrams(
-                              grams: editedGrams,
-                              portionGrams: activePortion.grams,
-                            ),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.edit_outlined),
-                      label: const Text('تغییر مقدار یا وزن کل'),
-                    ),
-                    const SizedBox(height: 18),
+                  if (drafts.isNotEmpty) ...[
+                    const SizedBox(height: 16),
                     Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE4EFE9),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.local_fire_department_outlined),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              '${calories.round()} کیلوکالری\nبازه محتمل: ${rangeMin.round()} تا ${rangeMax.round()}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Text('${grams.round()} گرم'),
-                        ],
+                      padding: const EdgeInsets.all(16),
+                      color: const Color(0xFFE4EFE9),
+                      child: Text(
+                        'مجموع بشقاب: ${totalCalories.round()} کیلوکالری',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: () => Navigator.pop(
                         context,
-                        DiaryEntry(
-                          food: activeFood,
-                          portion: activePortion,
-                          quantity: quantity,
-                          grams: grams,
-                          calories: calories,
-                          rangeMin: rangeMin,
-                          rangeMax: rangeMax,
-                        ),
+                        drafts
+                            .map((draft) {
+                              final grams =
+                                  draft.portion.grams * draft.quantity;
+                              final calories =
+                                  grams * draft.food.kcalPer100g / 100;
+                              return DiaryEntry(
+                                food: draft.food,
+                                portion: draft.portion,
+                                quantity: draft.quantity,
+                                grams: grams,
+                                calories: calories,
+                                rangeMin:
+                                    calories * (1 - draft.food.uncertainty),
+                                rangeMax:
+                                    calories * (1 + draft.food.uncertainty),
+                              );
+                            })
+                            .toList(growable: false),
                       ),
                       icon: const Icon(Icons.check),
-                      label: const Text('ثبت در وعده امروز'),
+                      label: Text('ثبت ${drafts.length} جزء در وعده امروز'),
                     ),
                   ],
                 ],
@@ -393,7 +458,44 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     );
-    if (entry != null && mounted) setState(() => _entries.insert(0, entry));
+    if (entries != null && mounted) {
+      setState(() => _entries.insertAll(0, entries.reversed));
+    }
+  }
+
+  FoodCatalogItem? _foodById(String foodId) => _foods
+      .cast<FoodCatalogItem?>()
+      .firstWhere((food) => food?.id == foodId, orElse: () => null);
+
+  Future<FoodCatalogItem?> _selectFood(BuildContext context) async {
+    final selected = await showDialog<FoodCatalogItem>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('افزودن جزء بشقاب'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, _manualFoodChoice),
+            child: const Row(
+              children: [
+                Icon(Icons.edit_outlined),
+                SizedBox(width: 10),
+                Text('ورود نام غذا به‌صورت دستی'),
+              ],
+            ),
+          ),
+          ..._foods.map(
+            (food) => SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, food),
+              child: Text(food.name),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (selected == _manualFoodChoice && context.mounted) {
+      return _createManualFood(context);
+    }
+    return selected;
   }
 
   String _formatQuantity(double value) => value == value.roundToDouble()

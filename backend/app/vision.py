@@ -27,12 +27,19 @@ class FoodCandidate(BaseModel):
     confidence: float = Field(ge=0, le=1)
 
 
+class RecognizedComponent(BaseModel):
+    food_id: str
+    confidence: float = Field(ge=0, le=1)
+    estimated_grams: float = Field(gt=0, le=5000)
+
+
 class RecognitionResult(BaseModel):
     food_id: str | None
     confidence: float = Field(ge=0, le=1)
     is_food: bool
     needs_confirmation: bool
     alternatives: list[FoodCandidate] = Field(default_factory=list, max_length=3)
+    components: list[RecognizedComponent] = Field(default_factory=list, max_length=8)
 
 
 class ValidatedImage(BaseModel):
@@ -59,6 +66,23 @@ GEMINI_RESPONSE_SCHEMA = {
                 "required": ["food_id", "confidence"],
             },
         },
+        "components": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "food_id": {"type": "string"},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                    "estimated_grams": {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 5000,
+                    },
+                },
+                "required": ["food_id", "confidence", "estimated_grams"],
+            },
+        },
     },
     "required": [
         "food_id",
@@ -66,6 +90,7 @@ GEMINI_RESPONSE_SCHEMA = {
         "is_food",
         "needs_confirmation",
         "alternatives",
+        "components",
     ],
 }
 
@@ -123,14 +148,19 @@ def build_recognition_prompt() -> str:
         family_sections.append(f"[{family_name}] {family_catalog}")
     food_catalog = "\n".join(family_sections)
     return (
-        "Classify the main Iranian food in this image. First identify its likely family, "
-        "then compare every candidate within that family. Only choose from this catalog:\n"
-        f"{food_catalog}. Return null food_id when the image is not food, is outside the "
-        "catalog, or is too ambiguous. Compare the visual evidence against the catalog "
-        "hints, especially for visually similar foods in the same family; do not choose "
-        "the closest-looking item when its defining ingredients are absent. Confidence "
-        "must reflect uncertainty; set "
-        "needs_confirmation=true below 0.85. Do not estimate calories or portion."
+        "Identify every distinct visible food component in this image, such as rice, stew, "
+        "kebab or side dishes. First identify each component's likely family, then compare "
+        "every candidate within that family. Only choose from this catalog:\n"
+        f"{food_catalog}. Put each supported component in components once, with its own "
+        "confidence and a conservative estimated_grams value. Use food_id and confidence "
+        "for the main or most prominent supported component to preserve compatibility. "
+        "Return null food_id and an empty components list when the image is not food, all "
+        "visible foods are outside the catalog, or it is too ambiguous. Omit unsupported "
+        "side dishes instead of mapping them to the closest catalog item. Compare visual "
+        "evidence against the catalog hints, especially for similar foods in the same "
+        "family; do not choose the closest-looking item when its defining ingredients are "
+        "absent. Confidence must reflect uncertainty; set needs_confirmation=true when "
+        "any component is below 0.85. Do not estimate calories."
     )
 
 
@@ -186,6 +216,10 @@ class GeminiVisionProvider(VisionProvider):
             raise VisionError("Gemini returned an unsupported food id")
         if any(item.food_id not in allowed_ids for item in result.alternatives):
             raise VisionError("Gemini returned an unsupported alternative")
+        if any(item.food_id not in allowed_ids for item in result.components):
+            raise VisionError("Gemini returned an unsupported component")
+        if len({item.food_id for item in result.components}) != len(result.components):
+            raise VisionError("Gemini returned duplicate components")
         return result
 
 
